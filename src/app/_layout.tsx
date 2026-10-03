@@ -1,18 +1,36 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from "expo-router";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { SesionProvider } from "../contextos/SesionContext";
 
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <SesionProvider>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
+        <Stack.Screen
+          name="lugares"
+          options={{
+            title: "Lugares",
+            headerStyle: {
+              backgroundColor: "#075985",
+            },
+            headerTintColor: "#FFFFFF",
+            headerTitleStyle: {
+              fontWeight: "700",
+            },
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="login"
+          options={{
+            title: "Iniciar sesión",
+            headerShown: false,
+          }}
+        />
+      </Stack>
+    </SesionProvider>
   );
 }
