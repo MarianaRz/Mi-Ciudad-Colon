@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mi-ciudad-colon",
+    "name": "Mi Ciudad Colón",
     "slug": "mi-ciudad-colon",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,6 +11,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.marianarz.miciudadcolon",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,6 +40,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d3fc68aa-0deb-4a42-8da6-cadde6c415a0"
+      }
+    },
+    "owner": "marianarz"
   }
 }
