@@ -3,9 +3,18 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSesion } from "../../contextos/SesionContext";
 
 export default function PerfilScreen() {
+  const { sesion, cargando, cerrarSesion } = useSesion();
 
-  const { sesion, cerrarSesion } = useSesion();
+  // 1. Si está cargando la sesión
+  if (cargando) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.texto}>Cargando tu cuenta...</Text>
+      </View>
+    );
+  }
 
+  // 2. Si HAY una sesión activa
   if (sesion) {
     return (
       <View style={styles.container}>
@@ -27,6 +36,7 @@ export default function PerfilScreen() {
     );
   }
 
+  // 3. Si NO hay sesión activa (invitado)
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tu cuenta</Text>
@@ -98,7 +108,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   textoBotonIniciar: {
     color: "#FFFFFF",
     fontSize: 16,
