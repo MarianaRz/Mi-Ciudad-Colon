@@ -13,6 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { router } from "expo-router";
 import { useSesion } from "../contextos/SesionContext";
+import { useState } from "react";
+import { iniciarSesionApi } from "../servicios/auth";
 
 const esquemaLogin = z.object({
   email: z.email("Ingresá un correo electrónico válido"),
@@ -38,11 +40,20 @@ export default function LoginScreen() {
     },
   });
 
-  function iniciarSesion(datos: DatosLogin) {
-    guardarSesion(datos.email);
-    router.replace("/(tabs)/perfil");
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+
+  async function enviar(datos: DatosLogin) {
+    setErrorEnvio(null);
+
+    try {
+      const nueva = await iniciarSesionApi(datos.email, datos.contraseña);
+      await guardarSesion(nueva);
+      router.replace("/(tabs)/perfil");
+    } catch {
+      setErrorEnvio("No pudimos iniciar sesión. Probá de nuevo.");
+    }
   }
-  
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -107,9 +118,11 @@ export default function LoginScreen() {
             )}
           </View>
 
+          {errorEnvio && <Text style={styles.error}>{errorEnvio}</Text>}
+
           <Pressable
             style={styles.boton}
-            onPress={handleSubmit(iniciarSesion)}
+            onPress={handleSubmit(enviar)}
             role="button"
             accessibilityLabel="Iniciar sesión"
           >
