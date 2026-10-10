@@ -1,3 +1,7 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, router } from "expo-router";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -8,12 +12,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { router } from "expo-router";
 import { useSesion } from "../contextos/SesionContext";
-import { useState } from "react";
 import { iniciarSesionApi } from "../servicios/auth";
 
 const esquemaLogin = z.object({
@@ -128,6 +128,11 @@ export default function LoginScreen() {
           >
             <Text style={styles.textoBoton}>Iniciar sesión</Text>
           </Pressable>
+
+          <Link href="/registro" replace style={styles.enlace}>
+            ¿No tenés cuenta? Registrate
+          </Link>
+          
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -194,5 +199,11 @@ const styles = StyleSheet.create({
   error: {
     color: "#B42318",
     fontSize: 14,
+  },
+  enlace: {
+    color: "#075985",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

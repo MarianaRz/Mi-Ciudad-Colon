@@ -5,11 +5,22 @@ function esperar(ms: number) {
 }
 
 // MOCK: se reemplaza por la API de la cátedra cuando esté disponible.
-export async function iniciarSesionApi(
-  email: string,
-  _clave: string,
-): Promise<Sesion> {
+async function simularRespuesta(email: string): Promise<Sesion> {
   await esperar(400);
 
   return { email, token: `token-mock-${Date.now()}` };
+}
+
+export function iniciarSesionApi(
+  email: string,
+  _contraseña: string,
+): Promise<Sesion> {
+  return simularRespuesta(email);
+}
+
+export function registrarseApi(
+  email: string,
+  _contraseña: string,
+): Promise<Sesion> {
+  return simularRespuesta(email);
 }
