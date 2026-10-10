@@ -1,9 +1,10 @@
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BloqueoSesion } from "../../components/BloqueoSesion";
 import { useSesion } from "../../contextos/SesionContext";
 
 export default function PerfilScreen() {
-  const { sesion, cargando, cerrarSesion } = useSesion();
+  const { sesion, cargando, bloqueada, cerrarSesion } = useSesion();
 
   // 1. Si está cargando la sesión
   if (cargando) {
@@ -13,6 +14,10 @@ export default function PerfilScreen() {
       </View>
     );
   }
+
+    if (sesion && bloqueada) {
+      return <BloqueoSesion email={sesion.email} />;
+    }
 
   // 2. Si HAY una sesión activa
   if (sesion) {

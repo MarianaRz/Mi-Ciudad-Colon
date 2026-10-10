@@ -30,6 +30,14 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+
+        <Stack.Screen
+          name="registro"
+          options={{
+            title: "Crear cuenta",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </SesionProvider>
   );

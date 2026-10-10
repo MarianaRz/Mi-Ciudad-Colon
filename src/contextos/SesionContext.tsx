@@ -11,11 +11,14 @@ import {
   guardarSesion,
   leerSesion,
 } from "../servicios/almacenSesion";
+import { autenticarConBiometria } from "../servicios/biometria";
 import { Sesion } from "../tipos/sesion";
 
 interface SesionContexto {
   sesion: Sesion | null;
   cargando: boolean;
+  bloqueada: boolean;
+  desbloquear: () => Promise<boolean>;
   iniciarSesion: (sesion: Sesion) => Promise<void>;
   cerrarSesion: () => Promise<void>;
 }
@@ -29,6 +32,7 @@ interface SesionProviderProps {
 export function SesionProvider({ children }: SesionProviderProps) {
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [bloqueada, setBloqueada] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -36,7 +40,10 @@ export function SesionProvider({ children }: SesionProviderProps) {
     async function restaurarSesion() {
       try {
         const guardada = await leerSesion();
-        if (activo) setSesion(guardada);
+        if (activo && guardada) {
+          setSesion(guardada);
+          setBloqueada(true);
+        }
       } catch {
         if (activo) setSesion(null);
       } finally {
@@ -54,15 +61,32 @@ export function SesionProvider({ children }: SesionProviderProps) {
   async function iniciarSesion(nueva: Sesion) {
     await guardarSesion(nueva);
     setSesion(nueva);
+    setBloqueada(false);
   }
 
   async function cerrarSesion() {
     await borrarSesion();
     setSesion(null);
+    setBloqueada(false);
+  }
+
+  async function desbloquear() {
+    const verificada = await autenticarConBiometria();
+    if (verificada) setBloqueada(false);
+    return verificada;
   }
 
   return (
-    <SesionContext value={{ sesion, cargando, iniciarSesion, cerrarSesion }}>
+    <SesionContext
+      value={{
+        sesion,
+        cargando,
+        bloqueada,
+        desbloquear,
+        iniciarSesion,
+        cerrarSesion,
+      }}
+    >
       {children}
     </SesionContext>
   );
