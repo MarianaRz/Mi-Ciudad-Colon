@@ -1,10 +1,7 @@
 import { lugaresMock } from "../mocks/lugares";
 import { ErrorApi, RespuestaLista } from "../tipos/api";
 import { Lugar } from "../tipos/lugar";
-
-function esperar(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { esperar } from "../utils/esperar";
 
 export async function obtenerLugares(): Promise<RespuestaLista<Lugar>> {
   await esperar(400);

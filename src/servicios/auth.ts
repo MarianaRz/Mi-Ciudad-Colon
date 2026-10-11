@@ -1,8 +1,5 @@
 import { Sesion } from "../tipos/sesion";
-
-function esperar(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { esperar } from "../utils/esperar";
 
 // MOCK: se reemplaza por la API de la cátedra cuando esté disponible.
 async function simularRespuesta(email: string): Promise<Sesion> {
