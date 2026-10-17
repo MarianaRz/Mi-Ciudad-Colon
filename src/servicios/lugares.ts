@@ -29,3 +29,18 @@ export async function obtenerLugarPorId(id: string): Promise<Lugar> {
 
   return lugar;
 }
+
+// Buscar un lugar activo mediante su código QR.
+export async function obtenerLugarPorQr(
+  codigoQr: string,
+): Promise<Lugar | null> {
+  const respuesta = await obtenerLugares();
+
+  const codigo = codigoQr.trim();
+
+  return (
+    respuesta.datos.find(
+      (lugar) => lugar.codigoQr !== null && lugar.codigoQr === codigo,
+    ) ?? null
+  );
+}
