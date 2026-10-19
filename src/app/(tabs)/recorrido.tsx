@@ -207,16 +207,16 @@ export default function RecorridoScreen() {
   }
 
   async function procesarQr(codigo: string): Promise<boolean> {
-     console.log("QR LEÍDO:", JSON.stringify(codigo));
+     
     const lugar = await obtenerLugarPorQr(codigo);
-
+    
     if (!lugar) {
-       console.log("QR NO RECONOCIDO:", JSON.stringify(codigo));
+       
       // El escáner mostrará el mensaje de error
       // y permitirá volver a escanear.
       return false;
     }
-    console.log("LUGAR RECONOCIDO:", lugar.nombre);
+    
     // QR válido: cerramos el escáner.
     setEscanerVisible(false);
 
