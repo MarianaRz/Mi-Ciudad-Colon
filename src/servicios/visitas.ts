@@ -112,3 +112,38 @@ export async function obtenerVisitas(usuarioId: string): Promise<Visita[]> {
 
   return filas.map(convertirVisita);
 }
+
+/**
+ * Comprueba si el usuario registró una visita al mismo
+ * lugar durante los últimos minutos.
+ *
+ * No impide registrar visitas repetidas.
+ */
+export async function obtenerVisitaReciente(
+  usuarioId: string,
+  lugarId: string,
+  minutos: number = 30,
+): Promise<Visita | null> {
+  const visitas = await obtenerVisitas(usuarioId);
+
+  const ahora = Date.now();
+  const intervalo = minutos * 60 * 1000;
+
+  const visitaReciente = visitas.find((visita) => {
+    if (visita.lugarId !== lugarId) {
+      return false;
+    }
+
+    const fechaVisita = new Date(
+      visita.fechaHora,
+    ).getTime();
+
+    return (
+      Number.isFinite(fechaVisita) &&
+      fechaVisita <= ahora &&
+      ahora - fechaVisita <= intervalo
+    );
+  });
+
+  return visitaReciente ?? null;
+}
