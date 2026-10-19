@@ -34,7 +34,11 @@ import {
   RADIO_VISITA_GPS_METROS,
 } from "../../servicios/ubicacionVisitas";
 
-import { obtenerVisitas, registrarVisita } from "../../servicios/visitas";
+import {
+  obtenerVisitaReciente,
+  obtenerVisitas,
+  registrarVisita,
+} from "../../servicios/visitas";
 
 import { Lugar } from "../../tipos/lugar";
 import { OrigenVisita, Visita } from "../../tipos/visita";
@@ -202,28 +206,27 @@ export default function RecorridoScreen() {
     setEscanerVisible(true);
   }
 
-  async function procesarQr(codigo: string) {
+  async function procesarQr(codigo: string): Promise<boolean> {
+     
+    const lugar = await obtenerLugarPorQr(codigo);
+    
+    if (!lugar) {
+       
+      // El escáner mostrará el mensaje de error
+      // y permitirá volver a escanear.
+      return false;
+    }
+    
+    // QR válido: cerramos el escáner.
     setEscanerVisible(false);
 
-    try {
-      const lugar = await obtenerLugarPorQr(codigo);
+    // Esperamos a que cierre el modal de cámara
+    // antes de abrir el formulario de visita.
+    setTimeout(() => {
+      prepararRegistro(lugar, "qr");
+    }, 400);
 
-      if (!lugar) {
-        Alert.alert(
-          "Código no reconocido",
-          "Este QR no corresponde a un lugar turístico registrado.",
-        );
-
-        return;
-      }
-
-      // Esperar el cierre del modal de cámara.
-      setTimeout(() => {
-        prepararRegistro(lugar, "qr");
-      }, 400);
-    } catch {
-      Alert.alert("Error", "No pudimos comprobar el código QR.");
-    }
+    return true;
   }
 
   // --------------------------------------------------
@@ -383,73 +386,131 @@ export default function RecorridoScreen() {
   }
 
   // --------------------------------------------------
-  // Guardar visita en SQLite
+  // Comprobar si existe una visita reciente
   // --------------------------------------------------
 
- async function guardarVisita() {
-   if (!sesion || !lugarSeleccionado || guardando || seleccionandoFoto) {
-     return;
-   }
+  async function guardarVisita() {
+    if (!sesion || !lugarSeleccionado || guardando || seleccionandoFoto) {
+      return;
+    }
 
-   setGuardando(true);
+    setGuardando(true);
 
-   let fotoPermanente: string | null = null;
+    try {
+      const visitaReciente = await obtenerVisitaReciente(
+        sesion.email,
+        lugarSeleccionado.id,
+        30,
+      );
 
-   try {
-     // Primero guardamos una copia permanente.
-     if (fotoTemporal) {
-       fotoPermanente = await guardarFotoVisita(fotoTemporal);
-     }
+      if (visitaReciente) {
+        setGuardando(false);
 
-     // Después registramos la visita en SQLite.
-     await registrarVisita(
-       sesion.email,
-       lugarSeleccionado.id,
-       origenRegistro,
-       nota.trim() || null,
-       fotoPermanente,
-     );
-   } catch (error) {
-     console.error("ERROR AL GUARDAR VISITA:", error);
+        Alert.alert(
+          "Ya registraste este lugar",
+          `Registraste una visita a ${lugarSeleccionado.nombre} durante los últimos 30 minutos.\n\n¿Querés registrar otra visita igualmente?`,
+          [
+            {
+              text: "Cancelar",
+              style: "cancel",
+            },
+            {
+              text: "Registrar igualmente",
+              onPress: () => {
+                void persistirVisita();
+              },
+            },
+          ],
+          { cancelable: false },
+        );
 
-     // Si SQLite falló después de copiar la fotografía,
-     // eliminamos únicamente nuestra copia privada.
-     if (fotoPermanente) {
-       try {
-         await eliminarFotoVisita(fotoPermanente);
-       } catch (errorLimpieza) {
-         console.error("ERROR AL LIMPIAR FOTOGRAFÍA:", errorLimpieza);
-       }
-     }
+        return;
+      }
 
-     Alert.alert(
-       "Error",
-       "No pudimos completar el registro. Intentá nuevamente.",
-     );
+      await persistirVisita(true);
+    } catch (error) {
+      console.error("ERROR AL COMPROBAR VISITA RECIENTE:", error);
 
-     setGuardando(false);
-     return;
-   }
+      setGuardando(false);
 
-   // Llegamos acá solamente si SQLite guardó correctamente.
-   setModalVisible(false);
-   setLugarSeleccionado(null);
-   setNota("");
-   setFotoTemporal(null);
-   setDistanciaGps(null);
+      Alert.alert(
+        "Error",
+        "No pudimos comprobar si ya registraste este lugar. Intentá nuevamente.",
+      );
+    }
+  }
 
-   try {
-     // Actualizamos el historial por separado.
-     await cargarDatos();
-   } catch (error) {
-     console.error("ERROR AL ACTUALIZAR HISTORIAL:", error);
-   } finally {
-     setGuardando(false);
-   }
+  // --------------------------------------------------
+  // Guardar la visita en SQLite
+  // --------------------------------------------------
 
-   Alert.alert("¡Visita registrada!", "Agregamos este lugar a tu recorrido.");
- }
+  async function persistirVisita(bloqueoActivo = false) {
+    if (
+      !sesion ||
+      !lugarSeleccionado ||
+      (!bloqueoActivo && guardando) ||
+      seleccionandoFoto
+    ) {
+      return;
+    }
 
+    setGuardando(true);
+
+    let fotoPermanente: string | null = null;
+
+    try {
+      // Primero guardamos una copia permanente de la fotografía.
+      if (fotoTemporal) {
+        fotoPermanente = await guardarFotoVisita(fotoTemporal);
+      }
+
+      // Después registramos la visita en SQLite.
+      await registrarVisita(
+        sesion.email,
+        lugarSeleccionado.id,
+        origenRegistro,
+        nota.trim() || null,
+        fotoPermanente,
+      );
+    } catch (error) {
+      console.error("ERROR AL GUARDAR VISITA:", error);
+
+      // Si SQLite falló después de copiar la fotografía,
+      // eliminamos únicamente nuestra copia privada.
+      if (fotoPermanente) {
+        try {
+          await eliminarFotoVisita(fotoPermanente);
+        } catch (errorLimpieza) {
+          console.error("ERROR AL LIMPIAR FOTOGRAFÍA:", errorLimpieza);
+        }
+      }
+
+      Alert.alert(
+        "Error",
+        "No pudimos completar el registro. Intentá nuevamente.",
+      );
+
+      setGuardando(false);
+      return;
+    }
+
+    // La visita ya quedó guardada correctamente.
+    setModalVisible(false);
+    setLugarSeleccionado(null);
+    setNota("");
+    setFotoTemporal(null);
+    setDistanciaGps(null);
+
+    try {
+      await cargarDatos();
+    } catch (error) {
+      console.error("ERROR AL ACTUALIZAR HISTORIAL:", error);
+    } finally {
+      setGuardando(false);
+    }
+
+    Alert.alert("¡Visita registrada!", "Agregamos este lugar a tu recorrido.");
+  }
   // --------------------------------------------------
   // Cerrar formulario
   // --------------------------------------------------

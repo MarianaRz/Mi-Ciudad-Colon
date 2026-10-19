@@ -5,7 +5,7 @@ import {
   type BarcodeScanningResult,
 } from "expo-camera";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -19,7 +19,7 @@ import {
 interface EscanerQRProps {
   visible: boolean;
   onCerrar: () => void;
-  onEscaneado: (codigo: string) => void;
+  onEscaneado: (codigo: string) => Promise<boolean>;
 }
 
 export default function EscanerQR({
@@ -30,23 +30,83 @@ export default function EscanerQR({
   const [permiso, solicitarPermiso] = useCameraPermissions();
 
   const [escaneado, setEscaneado] = useState(false);
+  const [comprobando, setComprobando] = useState(false);
+  const [mensajeError, setMensajeError] = useState<string | null>(null);
 
-  // Evitar múltiples lecturas antes de que React actualice el estado.
   const procesando = useRef(false);
+  const sesionEscaneo = useRef(0);
 
-  function cerrar() {
+  // Reiniciar el escáner cada vez que se abre o se cierra.
+  useEffect(() => {
+    sesionEscaneo.current += 1;
     procesando.current = false;
     setEscaneado(false);
+    setComprobando(false);
+    setMensajeError(null);
+
+    return () => {
+      sesionEscaneo.current += 1;
+    };
+  }, [visible]);
+
+  function cerrar() {
+    sesionEscaneo.current += 1;
+    procesando.current = false;
+    setEscaneado(false);
+    setComprobando(false);
+    setMensajeError(null);
     onCerrar();
   }
 
-  function procesarCodigo(resultado: BarcodeScanningResult) {
-    if (procesando.current) return;
+  function reintentar() {
+    sesionEscaneo.current += 1;
+    procesando.current = false;
+    setEscaneado(false);
+    setComprobando(false);
+    setMensajeError(null);
+  }
+
+  async function procesarCodigo(resultado: BarcodeScanningResult) {
+    if (procesando.current || !visible) {
+      return;
+    }
 
     procesando.current = true;
     setEscaneado(true);
+    setComprobando(true);
+    setMensajeError(null);
 
-    onEscaneado(resultado.data);
+    const sesionActual = sesionEscaneo.current;
+
+    try {
+      const reconocido = await onEscaneado(resultado.data);
+
+      // Ignorar respuestas que llegaron después de cerrar
+      // o reiniciar el escáner.
+      if (sesionActual !== sesionEscaneo.current) {
+        return;
+      }
+
+      if (!reconocido) {
+        setMensajeError(
+          "Código QR no reconocido como un punto turístico de Colón.",
+        );
+      }
+    } catch (error) {
+      console.error("ERROR AL PROCESAR QR:", error);
+
+      if (sesionActual !== sesionEscaneo.current) {
+        return;
+      }
+
+      setMensajeError(
+        "No pudimos comprobar este código QR. Intentá nuevamente.",
+      );
+    } finally {
+      if (sesionActual === sesionEscaneo.current) {
+        setComprobando(false);
+      }
+    }
   }
 
   return (
@@ -110,6 +170,42 @@ export default function EscanerQR({
                 Apuntá la cámara al código QR del lugar.
               </Text>
             </View>
+
+            {comprobando && (
+              <View style={styles.panelResultado}>
+                <ActivityIndicator size="large" color="#075985" />
+
+                <Text style={styles.mensaje}>Comprobando código QR...</Text>
+              </View>
+            )}
+
+            {mensajeError && !comprobando && (
+              <View style={styles.panelResultado}>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={46}
+                  color="#B42318"
+                />
+
+                <Text style={styles.mensaje}>{mensajeError}</Text>
+
+                <Pressable
+                  style={styles.boton}
+                  onPress={reintentar}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.textoBoton}>Volver a escanear</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.botonCancelar}
+                  onPress={cerrar}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.textoCancelar}>Cancelar</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -166,6 +262,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   textoBoton: {
@@ -203,5 +301,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
+  },
+
+  panelResultado: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    top: "30%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 24,
+    alignItems: "center",
+    gap: 16,
+  },
+
+  botonCancelar: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+
+  textoCancelar: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });
