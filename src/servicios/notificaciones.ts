@@ -4,6 +4,8 @@ import { Platform } from "react-native";
 import { Evento } from "../tipos/evento";
 
 const CANAL_EVENTOS = "recordatorios-eventos";
+const CANAL_CAMBIOS = "cambios-eventos";
+
 const MINUTOS_ANTICIPACION = 30;
 
 Notifications.setNotificationHandler({
@@ -15,8 +17,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Crear el canal de Android.
-async function configurarCanal(): Promise<void> {
+// --------------------------------------------------
+// Configurar canales de Android
+// --------------------------------------------------
+
+async function configurarCanales(): Promise<void> {
   if (Platform.OS !== "android") {
     return;
   }
@@ -27,11 +32,21 @@ async function configurarCanal(): Promise<void> {
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
   });
+
+  await Notifications.setNotificationChannelAsync(CANAL_CAMBIOS, {
+    name: "Cambios en eventos",
+    description: "Avisos cuando un evento guardado se suspende o cancela.",
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+  });
 }
 
-// Solicitar permisos cuando sean necesarios.
+// --------------------------------------------------
+// Permisos
+// --------------------------------------------------
+
 export async function solicitarPermisoNotificaciones(): Promise<boolean> {
-  await configurarCanal();
+  await configurarCanales();
 
   const permisos = await Notifications.getPermissionsAsync();
 
@@ -48,12 +63,18 @@ export async function solicitarPermisoNotificaciones(): Promise<boolean> {
   return respuesta.granted;
 }
 
-// Consultar notificaciones pendientes.
+// --------------------------------------------------
+// Consultar notificaciones pendientes
+// --------------------------------------------------
+
 export async function obtenerRecordatoriosPendientes() {
   return Notifications.getAllScheduledNotificationsAsync();
 }
 
-// Buscar recordatorios de un evento para una cuenta específica.
+// --------------------------------------------------
+// Buscar recordatorios de un evento
+// --------------------------------------------------
+
 async function buscarRecordatoriosEvento(
   usuarioEmail: string,
   eventoId: string,
@@ -65,12 +86,16 @@ async function buscarRecordatoriosEvento(
 
     return (
       datos?.eventoId === eventoId &&
-      datos?.usuarioEmail === usuarioEmail.toLowerCase()
+      datos?.usuarioEmail === usuarioEmail.toLowerCase() &&
+      (datos?.tipo === "recordatorio" || datos?.tipo === undefined)
     );
   });
 }
 
-// Programar un recordatorio evitando duplicados.
+// --------------------------------------------------
+// Programar recordatorio 30 minutos antes
+// --------------------------------------------------
+
 export async function programarRecordatorioEvento(
   evento: Evento,
   usuarioEmail: string,
@@ -85,7 +110,6 @@ export async function programarRecordatorioEvento(
     inicio.getTime() - MINUTOS_ANTICIPACION * 60 * 1000,
   );
 
-  // No programar recordatorios vencidos.
   if (
     !Number.isFinite(momentoAviso.getTime()) ||
     momentoAviso.getTime() <= Date.now()
@@ -99,12 +123,10 @@ export async function programarRecordatorioEvento(
     return null;
   }
 
-  // Si ya existe un recordatorio pendiente para este
-  // evento y usuario, reutilizamos su identificador.
   const existentes = await buscarRecordatoriosEvento(usuarioEmail, evento.id);
 
+  // No duplicar recordatorios existentes.
   if (existentes.length > 0) {
-    // Si hubiera duplicados anteriores, conservar uno.
     for (const duplicado of existentes.slice(1)) {
       await Notifications.cancelScheduledNotificationAsync(
         duplicado.identifier,
@@ -114,7 +136,7 @@ export async function programarRecordatorioEvento(
     return existentes[0].identifier;
   }
 
-  const identificador = await Notifications.scheduleNotificationAsync({
+  return Notifications.scheduleNotificationAsync({
     content: {
       title: "¡Tu evento está por comenzar!",
       body: `${evento.titulo} empieza en 30 minutos.`,
@@ -122,6 +144,7 @@ export async function programarRecordatorioEvento(
         ruta: `/eventos/${evento.id}`,
         eventoId: evento.id,
         usuarioEmail: usuarioEmail.toLowerCase(),
+        tipo: "recordatorio",
       },
       sound: "default",
     },
@@ -132,19 +155,22 @@ export async function programarRecordatorioEvento(
       ...(Platform.OS === "android" ? { channelId: CANAL_EVENTOS } : {}),
     },
   });
-
-  return identificador;
 }
 
-// Cancelar un recordatorio mediante su identificador.
+// --------------------------------------------------
+// Cancelar recordatorio por ID
+// --------------------------------------------------
+
 export async function cancelarRecordatorio(
   identificador: string,
 ): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(identificador);
 }
 
-// Cancelar todos los recordatorios pendientes
-// de un evento perteneciente a una cuenta.
+// --------------------------------------------------
+// Cancelar recordatorios de un evento
+// --------------------------------------------------
+
 export async function cancelarRecordatoriosEvento(
   usuarioEmail: string,
   eventoId: string,
@@ -156,4 +182,73 @@ export async function cancelarRecordatoriosEvento(
   }
 }
 
+// --------------------------------------------------
+// Reprogramar un recordatorio
+// --------------------------------------------------
 
+export async function reprogramarRecordatorioEvento(
+  evento: Evento,
+  usuarioEmail: string,
+  identificadorAnterior: string | null,
+): Promise<string | null> {
+  // Cancelar el recordatorio guardado en SQLite.
+  if (identificadorAnterior) {
+    await cancelarRecordatorio(identificadorAnterior);
+  }
+
+  // Cancelar otros recordatorios pendientes del evento.
+  await cancelarRecordatoriosEvento(usuarioEmail, evento.id);
+
+  // Programar según la fecha y el estado actualizados.
+  return programarRecordatorioEvento(evento, usuarioEmail);
+}
+
+// --------------------------------------------------
+// Avisar cambios de estado
+// --------------------------------------------------
+
+export async function notificarCambioEstadoEvento(
+  evento: Evento,
+  usuarioEmail: string,
+): Promise<boolean> {
+  if (evento.estado !== "suspendido" && evento.estado !== "cancelado") {
+    return false;
+  }
+
+  // Consultamos permisos existentes sin abrir un diálogo
+  // cada vez que se actualiza la Agenda.
+  await configurarCanales();
+
+  const permisos = await Notifications.getPermissionsAsync();
+
+  if (!permisos.granted) {
+    return false;
+  }
+
+  const suspendido = evento.estado === "suspendido";
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: suspendido ? "Evento suspendido" : "Evento cancelado",
+
+      body: suspendido
+        ? `${evento.titulo} fue suspendido. Consultá los detalles en la Agenda.`
+        : `${evento.titulo} fue cancelado. Consultá los detalles en la Agenda.`,
+
+      data: {
+        ruta: `/eventos/${evento.id}`,
+        eventoId: evento.id,
+        usuarioEmail: usuarioEmail.toLowerCase(),
+        tipo: "cambio-estado",
+      },
+
+      sound: "default",
+      ...(Platform.OS === "android" ? { channelId: CANAL_CAMBIOS } : {}),
+    },
+
+    // Notificación local inmediata.
+    trigger: null,
+  });
+
+  return true;
+}
