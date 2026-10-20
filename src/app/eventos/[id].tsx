@@ -21,17 +21,18 @@ import { obtenerEventoPorId } from "../../servicios/eventos";
 
 import {
   actualizarNotificacionGuardada,
+  actualizarSeguimientoEvento,
   estaEventoGuardado,
   guardarEvento,
   obtenerNotificacionGuardada,
   quitarEventoGuardado,
 } from "../../servicios/eventosGuardados";
+import { obtenerLugarPorId } from "../../servicios/lugares";
 import {
   cancelarRecordatorio,
   cancelarRecordatoriosEvento,
   programarRecordatorioEvento,
 } from "../../servicios/notificaciones";
-import { obtenerLugarPorId } from "../../servicios/lugares";
 import { Evento } from "../../tipos/evento";
 
 import {
@@ -190,90 +191,98 @@ export default function DetalleEventoScreen() {
   const evento = estado.fase === "listo" ? estado.evento : null;
 
   // Guardar o quitar un evento
- async function alternarGuardado() {
-   if (!evento || guardando || consultandoGuardado) {
-     return;
-   }
+  async function alternarGuardado() {
+    if (!evento || guardando || consultandoGuardado) {
+      return;
+    }
 
-   if (!sesion) {
-     Alert.alert(
-       "Iniciá sesión",
-       "Necesitás una cuenta para guardar eventos.",
-       [
-         { text: "Cancelar", style: "cancel" },
-         {
-           text: "Iniciar sesión",
-           onPress: () => router.push("/login"),
-         },
-       ],
-     );
-     return;
-   }
-
-   setGuardando(true);
-
-   try {
-    if (guardado) {
-      // Recuperar el identificador guardado en SQLite.
-      const notificacionId = await obtenerNotificacionGuardada(
-        sesion.email,
-        evento.id,
+    if (!sesion) {
+      Alert.alert(
+        "Iniciá sesión",
+        "Necesitás una cuenta para guardar eventos.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Iniciar sesión",
+            onPress: () => router.push("/login"),
+          },
+        ],
       );
+      return;
+    }
 
-      // Cancelar también recordatorios antiguos,
-      // que todavía no incluían el correo del usuario.
-      if (notificacionId) {
-        await cancelarRecordatorio(notificacionId);
-      }
+    setGuardando(true);
 
-      // Buscar y cancelar cualquier recordatorio pendiente
-      // asociado a este evento y esta cuenta.
-      await cancelarRecordatoriosEvento(sesion.email, evento.id);
-
-      // Quitar el evento de SQLite.
-      await quitarEventoGuardado(sesion.email, evento.id);
-
-      setGuardado(false);
-    } else {
-      // 1. Guardar el evento en SQLite.
-      await guardarEvento(sesion.email, evento.id);
-
-      // 2. Actualizar el botón inmediatamente.
-      setGuardado(true);
-
-      // 3. Intentar programar el recordatorio.
-      try {
-        const notificacionId = await programarRecordatorioEvento(
-          evento,
+    try {
+      if (guardado) {
+        // Recuperar el identificador guardado en SQLite.
+        const notificacionId = await obtenerNotificacionGuardada(
           sesion.email,
+          evento.id,
         );
 
-        // 4. Asociar el recordatorio con el evento.
-        if (notificacionId !== null) {
-          await actualizarNotificacionGuardada(
+        // Cancelar también recordatorios antiguos,
+        // que todavía no incluían el correo del usuario.
+        if (notificacionId) {
+          await cancelarRecordatorio(notificacionId);
+        }
+
+        // Buscar y cancelar cualquier recordatorio pendiente
+        // asociado a este evento y esta cuenta.
+        await cancelarRecordatoriosEvento(sesion.email, evento.id);
+
+        // Quitar el evento de SQLite.
+        await quitarEventoGuardado(sesion.email, evento.id);
+
+        setGuardado(false);
+      } else {
+        // 1. Guardar el evento en SQLite.
+        await guardarEvento(sesion.email, evento.id);
+
+        // 2. Guardar el estado y horario iniciales.
+        await actualizarSeguimientoEvento(
+          sesion.email,
+          evento.id,
+          evento.estado,
+          evento.inicio,
+        );
+
+        // 3. Actualizar el botón inmediatamente.
+        setGuardado(true);
+
+        // 3. Intentar programar el recordatorio.
+        try {
+          const notificacionId = await programarRecordatorioEvento(
+            evento,
             sesion.email,
-            evento.id,
-            notificacionId,
+          );
+
+          // 4. Asociar el recordatorio con el evento.
+          if (notificacionId !== null) {
+            await actualizarNotificacionGuardada(
+              sesion.email,
+              evento.id,
+              notificacionId,
+            );
+          }
+        } catch {
+          // El evento queda guardado aunque falle
+          // la programación del recordatorio.
+          Alert.alert(
+            "Evento guardado",
+            "Guardamos el evento, pero no pudimos activar el recordatorio.",
           );
         }
-      } catch {
-        // El evento queda guardado aunque falle
-        // la programación del recordatorio.
-        Alert.alert(
-          "Evento guardado",
-          "Guardamos el evento, pero no pudimos activar el recordatorio.",
-        );
       }
+    } catch {
+      Alert.alert(
+        "Error",
+        "No pudimos actualizar el evento guardado. Intentá nuevamente.",
+      );
+    } finally {
+      setGuardando(false);
     }
-   } catch {
-     Alert.alert(
-       "Error",
-       "No pudimos actualizar el evento guardado. Intentá nuevamente.",
-     );
-   } finally {
-     setGuardando(false);
-   }
- }
+  }
 
   const mostrarImagen = evento?.imagenUrl != null && !imagenFallida;
 
