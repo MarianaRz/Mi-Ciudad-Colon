@@ -1,23 +1,42 @@
-import { Sesion } from "../tipos/sesion";
+import type { Sesion } from "../tipos/sesion";
 import { esperar } from "../utils/esperar";
+import { guardarPerfilLocal, obtenerNombreLocal } from "./perfilesLocales";
 
-// MOCK: se reemplaza por la API de la cátedra cuando esté disponible.
-async function simularRespuesta(email: string): Promise<Sesion> {
+// MOCK: se reemplazará por la API de autenticación de la cátedra.
+async function simularRespuesta(
+  email: string,
+  nombre?: string,
+): Promise<Sesion> {
   await esperar(400);
 
-  return { email, token: `token-mock-${Date.now()}` };
+  const emailNormalizado = email.trim().toLowerCase();
+
+  return {
+    email: emailNormalizado,
+    token: `token-mock-${Date.now()}`,
+    ...(nombre ? { nombre } : {}),
+  };
 }
 
-export function iniciarSesionApi(
+export async function iniciarSesionApi(
   email: string,
   _contraseña: string,
 ): Promise<Sesion> {
-  return simularRespuesta(email);
+  const emailNormalizado = email.trim().toLowerCase();
+  const nombre = await obtenerNombreLocal(emailNormalizado);
+
+  return simularRespuesta(emailNormalizado, nombre ?? undefined);
 }
 
-export function registrarseApi(
+export async function registrarseApi(
   email: string,
   _contraseña: string,
+  nombre: string,
 ): Promise<Sesion> {
-  return simularRespuesta(email);
+  const emailNormalizado = email.trim().toLowerCase();
+  const nombreNormalizado = nombre.trim();
+
+  await guardarPerfilLocal(emailNormalizado, nombreNormalizado);
+
+  return simularRespuesta(emailNormalizado, nombreNormalizado);
 }
