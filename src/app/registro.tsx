@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,6 +20,11 @@ import { registrarseApi } from "../servicios/auth";
 
 const esquemaRegistro = z
   .object({
+    nombre: z
+      .string()
+      .trim()
+      .min(2, "Ingresá tu nombre (mínimo 2 caracteres)")
+      .max(80, "El nombre no puede superar los 80 caracteres"),
     email: z.email("Ingresá un correo electrónico válido"),
     contraseña: z
       .string()
@@ -39,17 +45,27 @@ export default function RegistroScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<DatosRegistro>({
     resolver: zodResolver(esquemaRegistro),
-    defaultValues: { email: "", contraseña: "", confirmacion: "" },
+    defaultValues: {
+      nombre: "",
+      email: "",
+      contraseña: "",
+      confirmacion: "",
+    },
   });
 
   async function enviar(datos: DatosRegistro) {
     setErrorEnvio(null);
 
     try {
-      const nueva = await registrarseApi(datos.email, datos.contraseña);
+      const nueva = await registrarseApi(
+        datos.email.trim().toLowerCase(),
+        datos.contraseña,
+        datos.nombre.trim(),
+      );
+
       await iniciarSesion(nueva);
       router.replace("/(tabs)/perfil");
     } catch {
@@ -63,12 +79,31 @@ export default function RegistroScreen() {
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.contenido}>
+        <ScrollView
+          contentContainerStyle={styles.contenido}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.titulo}>Crear cuenta</Text>
 
           <Text style={styles.subtitulo}>
             Guardá tus favoritos y tu recorrido en tu cuenta.
           </Text>
+
+          <Controller
+            control={control}
+            name="nombre"
+            render={({ field: { value, onChange } }) => (
+              <CampoFormulario
+                etiqueta="Nombre"
+                value={value}
+                onChangeText={onChange}
+                placeholder="Tu nombre"
+                autoCapitalize="words"
+                autoComplete="name"
+                error={errors.nombre?.message}
+              />
+            )}
+          />
 
           <Controller
             control={control}
@@ -121,18 +156,21 @@ export default function RegistroScreen() {
           {errorEnvio && <Text style={styles.error}>{errorEnvio}</Text>}
 
           <Pressable
-            style={styles.boton}
+            style={[styles.boton, isSubmitting && styles.botonDeshabilitado]}
             onPress={handleSubmit(enviar)}
-            role="button"
+            disabled={isSubmitting}
+            accessibilityRole="button"
             accessibilityLabel="Crear cuenta"
           >
-            <Text style={styles.textoBoton}>Crear cuenta</Text>
+            <Text style={styles.textoBoton}>
+              {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
+            </Text>
           </Pressable>
 
           <Link href="/login" replace style={styles.enlace}>
             ¿Ya tenés cuenta? Iniciá sesión
           </Link>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -147,10 +185,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contenido: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     padding: 24,
-    gap: 20,
+    gap: 18,
   },
   titulo: {
     fontSize: 32,
@@ -170,6 +208,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+  },
+  botonDeshabilitado: {
+    opacity: 0.6,
   },
   textoBoton: {
     color: "#FFFFFF",
