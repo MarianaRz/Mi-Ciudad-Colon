@@ -17,7 +17,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import ReproductorAudioguia from "../../components/ReproductorAudioguia";
 import { useSesion } from "../../contextos/SesionContext";
+
 import { obtenerCategorias } from "../../servicios/categorias";
 import {
   esFavorito,
@@ -109,6 +111,7 @@ export default function DetalleLugarScreen() {
 
         try {
           setCargandoFavorito(true);
+
           const resultado = await esFavorito(sesion.email, id);
 
           if (activo) setFavorito(resultado);
@@ -374,22 +377,22 @@ export default function DetalleLugarScreen() {
               </>
             )}
 
+            {/* Audioguía */}
             {lugar.audioguia && (
               <>
                 <View style={styles.separador} />
 
-                <View style={styles.audioguia}>
-                  <Text style={styles.icono}>🎧</Text>
-
-                  <View style={styles.detalleInformacion}>
-                    <Text style={styles.etiqueta}>Audioguía disponible</Text>
-                    <Text style={styles.valor}>
-                      Duración:{" "}
-                      {Math.floor(lugar.audioguia.duracionSegundos / 60)}{" "}
-                      minutos
-                    </Text>
-                  </View>
-                </View>
+                <ReproductorAudioguia
+                  key={lugar.id}
+                  lugarId={lugar.id}
+                  url={
+                    lugar.id === "lug-004"
+                      ? require("../../../assets/audio/molino-forclaz.mp3")
+                      : lugar.audioguia.url
+                  }
+                  duracionSegundos={lugar.audioguia.duracionSegundos}
+                  idioma={lugar.audioguia.idioma}
+                />
               </>
             )}
           </View>
@@ -439,7 +442,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    elevation: 4,
   },
   botonDeshabilitado: {
     opacity: 0.6,
@@ -518,14 +520,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: "#64748B",
-  },
-  audioguia: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#EFF6FF",
-    borderRadius: 16,
-    padding: 18,
-    gap: 14,
   },
   textoSecundario: {
     fontSize: 15,
