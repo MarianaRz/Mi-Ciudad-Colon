@@ -42,6 +42,7 @@ import {
 
 import { Lugar } from "../../tipos/lugar";
 import { OrigenVisita, Visita } from "../../tipos/visita";
+import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoPantalla =
   | { fase: "cargando" }
@@ -495,6 +496,8 @@ export default function RecorridoScreen() {
     }
 
     // La visita ya quedó guardada correctamente.
+    void confirmarAccion();
+
     setModalVisible(false);
     setLugarSeleccionado(null);
     setNota("");
