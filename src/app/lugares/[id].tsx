@@ -30,6 +30,7 @@ import { obtenerLugarPorId } from "../../servicios/lugares";
 import type { Categoria } from "../../tipos/categoria";
 import type { Lugar } from "../../tipos/lugar";
 import { obtenerEstadoHorario } from "../../utils/horarios";
+import { confirmarAccion } from "../../servicios/haptica";
 
 const AZUL = "#075985";
 
@@ -177,6 +178,8 @@ export default function DetalleLugarScreen() {
         await guardarFavorito(sesion.email, lugar.id);
         setFavorito(true);
       }
+
+      void confirmarAccion();
     } catch {
       Alert.alert(
         "Error",

@@ -40,6 +40,7 @@ import {
   formatearDuracion,
   formatearHora,
 } from "../../utils/fechas";
+import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoDetalle =
   | { fase: "cargando" }
@@ -235,9 +236,13 @@ export default function DetalleEventoScreen() {
         await quitarEventoGuardado(sesion.email, evento.id);
 
         setGuardado(false);
+        void confirmarAccion();
       } else {
         // 1. Guardar el evento en SQLite.
         await guardarEvento(sesion.email, evento.id);
+
+        // Confirmación táctil: el evento ya está guardado.
+        void confirmarAccion();
 
         // 2. Guardar el estado y horario iniciales.
         await actualizarSeguimientoEvento(
