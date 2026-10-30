@@ -15,7 +15,7 @@ import {
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import { useSesion } from "../../contextos/SesionContext";
 import { obtenerFavoritos, quitarFavorito } from "../../servicios/favoritos";
-import { obtenerLugares } from "../../servicios/lugares";
+import { obtenerLugaresApi } from "../../api/lugares";
 import type { Lugar } from "../../tipos/lugar";
 
 const AZUL = "#075985";
@@ -40,7 +40,7 @@ export default function FavoritosScreen() {
 
       const [favoritos, respuesta] = await Promise.all([
         obtenerFavoritos(sesion.email),
-        obtenerLugares(),
+        obtenerLugaresApi(),
       ]);
 
       const idsFavoritos = new Set(

@@ -16,21 +16,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import ReproductorAudioguia from "../../components/ReproductorAudioguia";
 import { useSesion } from "../../contextos/SesionContext";
-
-import { obtenerCategorias } from "../../servicios/categorias";
 import {
   esFavorito,
   guardarFavorito,
   quitarFavorito,
 } from "../../servicios/favoritos";
-import { obtenerLugarPorId } from "../../servicios/lugares";
 import type { Categoria } from "../../tipos/categoria";
 import type { Lugar } from "../../tipos/lugar";
 import { obtenerEstadoHorario } from "../../utils/horarios";
 import { confirmarAccion } from "../../servicios/haptica";
+import { obtenerCategoriasApi } from "../../api/categorias";
+import { obtenerLugarPorIdApi } from "../../api/lugares";
 
 const AZUL = "#075985";
 
@@ -67,8 +65,8 @@ export default function DetalleLugarScreen() {
         setCargando(true);
         setError(null);
 
-        const resultado = await obtenerLugarPorId(id);
-        const respuestaCategorias = await obtenerCategorias();
+        const resultado = await obtenerLugarPorIdApi(id);
+        const respuestaCategorias = await obtenerCategoriasApi();
 
         if (!activo) return;
 
