@@ -1,7 +1,10 @@
 import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -10,43 +13,71 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { obtenerCategorias } from "../servicios/categorias";
-import { obtenerLugares } from "../servicios/lugares";
-import { Categoria } from "../tipos/categoria";
-import { Lugar } from "../tipos/lugar";
+
+import { obtenerCategoriasApi } from "../api/categorias";
+import { obtenerLugaresApi } from "../api/lugares";
+
+import type { Lugar } from "../tipos/lugar";
+
+const AZUL = "#075985";
 
 export default function LugaresScreen() {
-  const [lugares, setLugares] = useState<Lugar[]>([]);
-  const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<
     string | null
   >(null);
 
-  useEffect(() => {
-    async function cargarLugares() {
-      const [respuestaLugares, respuestaCategorias] = await Promise.all([
-        obtenerLugares(),
-        obtenerCategorias(),
-      ]);
+  const consultaLugares = useQuery({
+    queryKey: ["lugares"],
+    queryFn: obtenerLugaresApi,
+  });
 
-      setLugares(respuestaLugares.datos);
-      setCategorias(respuestaCategorias.datos);
-      setCargando(false);
-    }
+  const consultaCategorias = useQuery({
+    queryKey: ["categorias"],
+    queryFn: obtenerCategoriasApi,
+  });
 
-    cargarLugares();
-  }, []);
+  const cargando = consultaLugares.isPending || consultaCategorias.isPending;
+
+  const hayError = consultaLugares.isError || consultaCategorias.isError;
 
   if (cargando) {
     return (
       <View style={styles.centro}>
-        <Text>Cargando lugares...</Text>
+        <ActivityIndicator size="large" color={AZUL} />
+        <Text style={styles.textoSecundario}>Cargando lugares...</Text>
       </View>
     );
   }
-  const lugaresFiltrados = lugares.filter((lugar) => {
+
+  if (hayError) {
+    return (
+      <View style={styles.centro}>
+        <Text style={styles.errorTitulo}>No pudimos cargar los lugares.</Text>
+
+        <Text style={styles.textoSecundario}>
+          Comprobá tu conexión e intentá nuevamente.
+        </Text>
+
+        <Pressable
+          style={styles.botonReintentar}
+          onPress={() => {
+            void consultaLugares.refetch();
+            void consultaCategorias.refetch();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Reintentar carga de lugares"
+        >
+          <Text style={styles.botonReintentarTexto}>Reintentar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const lugares = consultaLugares.data?.datos ?? [];
+  const categorias = consultaCategorias.data?.datos ?? [];
+
+  const lugaresFiltrados = lugares.filter((lugar: Lugar) => {
     const coincideNombre = lugar.nombre
       .toLowerCase()
       .includes(busqueda.trim().toLowerCase());
@@ -97,6 +128,7 @@ export default function LugaresScreen() {
                 Todas
               </Text>
             </Pressable>
+
             {categorias.map((categoria) => (
               <Pressable
                 key={categoria.id}
@@ -135,18 +167,14 @@ export default function LugaresScreen() {
           >
             {item.imagenes.length > 0 ? (
               <Image
-                source={item.imagenes[0]}
+                source={{ uri: item.imagenes[0] }}
                 style={styles.imagen}
                 contentFit="cover"
                 transition={200}
                 alt={`Imagen de ${item.nombre}`}
               />
             ) : (
-              <View
-                style={styles.imagenVacia}
-                accessibilityElementsHidden
-                importantForAccessibility="no"
-              >
+              <View style={styles.imagenVacia}>
                 <Text>Sin imagen disponible</Text>
               </View>
             )}
@@ -183,7 +211,6 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: "#F8FAFC",
   },
-
   buscador: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -195,61 +222,48 @@ const styles = StyleSheet.create({
     color: "#17202A",
     marginBottom: 8,
   },
-
   categorias: {
     marginTop: 8,
     marginBottom: 10,
   },
-
   chip: {
     minHeight: 44,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#075985",
+    borderColor: AZUL,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     marginRight: 8,
   },
-
   chipActivo: {
-    backgroundColor: "#075985",
+    backgroundColor: AZUL,
   },
-
   textoChip: {
-    color: "#075985",
+    color: AZUL,
     fontSize: 15,
     fontWeight: "600",
   },
-
   textoChipActivo: {
     color: "#FFFFFF",
   },
-
   tarjeta: {
     padding: 16,
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
-
     shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-
     elevation: 2,
   },
-
   imagen: {
     width: "100%",
     height: 180,
     borderRadius: 12,
     marginBottom: 14,
   },
-
   imagenVacia: {
     width: "100%",
     height: 180,
@@ -259,14 +273,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   nombre: {
     fontSize: 20,
     fontWeight: "700",
     color: "#17202A",
     marginBottom: 6,
   },
-
   direccion: {
     marginTop: 10,
     color: "#5F6B76",
@@ -277,23 +289,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+    gap: 12,
     backgroundColor: "#F8FAFC",
   },
-
+  textoSecundario: {
+    fontSize: 15,
+    color: "#64748B",
+    textAlign: "center",
+  },
+  errorTitulo: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#B42318",
+    textAlign: "center",
+  },
+  botonReintentar: {
+    backgroundColor: AZUL,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  botonReintentarTexto: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   vacio: {
     paddingVertical: 40,
     paddingHorizontal: 20,
     alignItems: "center",
     gap: 8,
   },
-
   vacioTitulo: {
     fontSize: 18,
     fontWeight: "700",
     color: "#17202A",
     textAlign: "center",
   },
-
   vacioTexto: {
     fontSize: 15,
     lineHeight: 22,
