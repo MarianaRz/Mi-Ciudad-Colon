@@ -14,7 +14,11 @@ import {
 
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import { useSesion } from "../../contextos/SesionContext";
-import { obtenerFavoritos, quitarFavorito } from "../../servicios/favoritos";
+import {
+  obtenerFavoritos,
+  quitarFavorito,
+  sincronizarFavoritos,
+} from "../../servicios/favoritos";
 import { obtenerLugaresApi } from "../../api/lugares";
 import type { Lugar } from "../../tipos/lugar";
 
@@ -37,6 +41,12 @@ export default function FavoritosScreen() {
     try {
       setCargando(true);
       setError(null);
+
+            try {
+              await sincronizarFavoritos(sesion.email);
+            } catch {
+              // Si la API no responde, seguimos mostrando los favoritos locales.
+            }
 
       const [favoritos, respuesta] = await Promise.all([
         obtenerFavoritos(sesion.email),

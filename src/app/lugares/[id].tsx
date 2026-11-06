@@ -22,6 +22,7 @@ import {
   esFavorito,
   guardarFavorito,
   quitarFavorito,
+  sincronizarFavoritos,
 } from "../../servicios/favoritos";
 import type { Categoria } from "../../tipos/categoria";
 import type { Lugar } from "../../tipos/lugar";
@@ -101,27 +102,42 @@ export default function DetalleLugarScreen() {
     useCallback(() => {
       let activo = true;
 
-      async function consultarFavorito() {
-        if (!sesion || bloqueada || !id) {
-          setFavorito(false);
-          setCargandoFavorito(false);
-          return;
-        }
+            async function consultarFavorito() {
+              if (!sesion || bloqueada || !id) {
+                setFavorito(false);
+                setCargandoFavorito(false);
+                return;
+              }
 
-        try {
-          setCargandoFavorito(true);
+              try {
+                setCargandoFavorito(true);
 
-          const resultado = await esFavorito(sesion.email, id);
+                const resultadoLocal = await esFavorito(sesion.email, id);
 
-          if (activo) setFavorito(resultado);
-        } catch {
-          if (activo) {
-            Alert.alert("Error", "No pudimos consultar tus favoritos.");
-          }
-        } finally {
-          if (activo) setCargandoFavorito(false);
-        }
-      }
+                if (!activo) return;
+                setFavorito(resultadoLocal);
+              } catch {
+                if (activo) {
+                  Alert.alert("Error", "No pudimos consultar tus favoritos.");
+                }
+                return;
+              } finally {
+                if (activo) setCargandoFavorito(false);
+              }
+
+              if (!activo) return;
+
+              try {
+                await sincronizarFavoritos(sesion.email);
+
+                const resultadoActualizado = await esFavorito(sesion.email, id);
+
+                if (activo) setFavorito(resultadoActualizado);
+              } catch {
+                // Si la API no está disponible, conservamos el estado local.
+                // La sincronización podrá reintentarse cuando vuelvas al detalle.
+              }
+            }
 
       void consultarFavorito();
 

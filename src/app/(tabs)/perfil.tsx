@@ -1,4 +1,5 @@
-import { Link } from "expo-router";
+import { Link, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,6 +11,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
+
+import { obtenerMiUsuarioApi } from "../../api/usuario";
+import type { UsuarioApi } from "../../api/usuario";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import { useSesion } from "../../contextos/SesionContext";
 
@@ -17,6 +21,43 @@ const AZUL = "#075985";
 
 export default function PerfilScreen() {
   const { sesion, cargando, bloqueada, cerrarSesion } = useSesion();
+
+  const emailSesion = sesion?.email;
+  const [usuarioApi, setUsuarioApi] = useState<UsuarioApi | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let activo = true;
+
+      if (!emailSesion || bloqueada) {
+        setUsuarioApi(null);
+        return () => {
+          activo = false;
+        };
+      }
+
+      setUsuarioApi(null);
+
+      async function cargarUsuario() {
+        try {
+          const usuario = await obtenerMiUsuarioApi();
+          if (activo) setUsuarioApi(usuario);
+        } catch {
+          // Si la API no responde, se muestran los datos de la sesión local.
+          if (activo) setUsuarioApi(null);
+        }
+      }
+
+      void cargarUsuario();
+
+      return () => {
+        activo = false;
+      };
+    }, [emailSesion, bloqueada]),
+  );
+
+  const nombreUsuario = usuarioApi?.nombre ?? sesion?.nombre;
+  const emailUsuario = usuarioApi?.email ?? sesion?.email ?? "";
 
   function confirmarCierreSesion() {
     Alert.alert(
@@ -121,17 +162,19 @@ export default function PerfilScreen() {
         <View style={styles.encabezadoCuenta}>
           <View style={styles.avatar}>
             <Text style={styles.inicialAvatar}>
-              {(sesion.nombre ?? sesion.email).charAt(0).toUpperCase()}
+              {(nombreUsuario ?? emailUsuario).charAt(0).toUpperCase()}
             </Text>
           </View>
 
           <View style={styles.datosCuenta}>
             <Text style={styles.saludo}>
-              {sesion.nombre ? `¡Hola, ${sesion.nombre}!` : "¡Hola de nuevo!"}
+              {nombreUsuario ? `¡Hola, ${nombreUsuario}!` : "¡Hola de nuevo!"}
             </Text>
+
             <Text style={styles.email} numberOfLines={2}>
-              {sesion.email}
+              {emailUsuario}
             </Text>
+
             <Text style={styles.estadoCuenta}>● Sesión activa</Text>
           </View>
         </View>
@@ -188,7 +231,7 @@ export default function PerfilScreen() {
 
             <View style={styles.textosAcceso}>
               <Text style={styles.tituloInformacion}>Correo electrónico</Text>
-              <Text style={styles.subtituloAcceso}>{sesion.email}</Text>
+              <Text style={styles.subtituloAcceso}>{emailUsuario}</Text>
             </View>
           </View>
 
