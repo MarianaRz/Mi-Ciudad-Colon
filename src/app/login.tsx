@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -13,8 +14,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
+import { ingresarApi } from "../api/auth";
 import { useSesion } from "../contextos/SesionContext";
-import { iniciarSesionApi } from "../servicios/auth";
 
 const esquemaLogin = z.object({
   email: z.email("Ingresá un correo electrónico válido"),
@@ -46,11 +47,23 @@ export default function LoginScreen() {
     setErrorEnvio(null);
 
     try {
-      const nueva = await iniciarSesionApi(datos.email, datos.contraseña);
+      const nueva = await ingresarApi(datos.email, datos.contraseña);
       await guardarSesion(nueva);
       router.replace("/(tabs)/perfil");
-    } catch {
-      setErrorEnvio("No pudimos iniciar sesión. Probá de nuevo.");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          setErrorEnvio("El correo o la contraseña son incorrectos.");
+        } else if (!error.response) {
+          setErrorEnvio(
+            "No pudimos conectar con el servidor. Revisá tu conexión.",
+          );
+        } else {
+          setErrorEnvio("No pudimos iniciar sesión. Intentá nuevamente.");
+        }
+      } else {
+        setErrorEnvio("Ocurrió un error inesperado. Intentá nuevamente.");
+      }
     }
   }
 
@@ -132,7 +145,6 @@ export default function LoginScreen() {
           <Link href="/registro" replace style={styles.enlace}>
             ¿No tenés cuenta? Registrate
           </Link>
-          
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

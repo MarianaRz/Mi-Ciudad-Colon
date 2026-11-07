@@ -1,12 +1,34 @@
 import { clienteApi } from "./cliente";
-import { RespuestaLista } from "../tipos/api";
-import { Categoria } from "../tipos/categoria";
+import type { RespuestaLista } from "../tipos/api";
+import type { Categoria } from "../tipos/categoria";
+import {
+  guardarCategoriasCache,
+  obtenerCategoriasCache,
+} from "../servicios/categoriasCache";
 
 export async function obtenerCategoriasApi(): Promise<
   RespuestaLista<Categoria>
 > {
-  const respuesta =
-    await clienteApi.get<RespuestaLista<Categoria>>("/categorias");
+  try {
+    const respuesta =
+      await clienteApi.get<RespuestaLista<Categoria>>("/categorias");
 
-  return respuesta.data;
+    try {
+      await guardarCategoriasCache(respuesta.data);
+    } catch {
+      // Un problema con la caché no impide mostrar las categorías online.
+    }
+
+    return respuesta.data;
+  } catch (error) {
+    try {
+      const cache = await obtenerCategoriasCache();
+
+      if (cache) return cache;
+    } catch {
+      // Si no hay caché disponible, conservamos el error de la API.
+    }
+
+    throw error;
+  }
 }

@@ -9,14 +9,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
 } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
-
+import { registrarUsuarioApi } from "../api/auth";
 import { CampoFormulario } from "../components/CampoFormulario";
 import { useSesion } from "../contextos/SesionContext";
-import { registrarseApi } from "../servicios/auth";
+import axios from "axios";
 
 const esquemaRegistro = z
   .object({
@@ -60,7 +60,7 @@ export default function RegistroScreen() {
     setErrorEnvio(null);
 
     try {
-      const nueva = await registrarseApi(
+      const nueva = await registrarUsuarioApi(
         datos.email.trim().toLowerCase(),
         datos.contraseña,
         datos.nombre.trim(),
@@ -68,8 +68,22 @@ export default function RegistroScreen() {
 
       await iniciarSesion(nueva);
       router.replace("/(tabs)/perfil");
-    } catch {
-      setErrorEnvio("No pudimos crear la cuenta. Probá de nuevo.");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 409) {
+          setErrorEnvio("Ya existe una cuenta con ese correo electrónico.");
+        } else if (error.response?.status === 400) {
+          setErrorEnvio("Revisá los datos ingresados e intentá nuevamente.");
+        } else if (!error.response) {
+          setErrorEnvio(
+            "No pudimos conectar con el servidor. Revisá tu conexión.",
+          );
+        } else {
+          setErrorEnvio("No pudimos crear la cuenta. Intentá nuevamente.");
+        }
+      } else {
+        setErrorEnvio("Ocurrió un error inesperado. Intentá nuevamente.");
+      }
     }
   }
 
