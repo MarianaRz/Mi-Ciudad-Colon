@@ -12,6 +12,11 @@
     },
     "android": {
       "package": "com.marianarz.miciudadcolon",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBuNLaEj3zPSTZoay2Z8MLwI5RSRKxQIXI"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
