@@ -1,5 +1,5 @@
 export const colores = {
-  primario: "#075985",
+  primario: "#7D97EE",
   fondo: "#F8FAFC",
   superficie: "#FFFFFF",
   texto: "#17202A",
