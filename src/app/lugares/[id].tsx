@@ -407,7 +407,9 @@ export default function DetalleLugarScreen() {
                       ? require("../../../assets/audio/molino-forclaz.mp3")
                       : lugar.id === "lug-008"
                         ? require("../../../assets/audio/iglesia-san-martin.mp3")
-                        : lugar.audioguia.url
+                        : lugar.id === "lug-007"
+                          ? require("../../../assets/audio/puerto-viejo.mp3")
+                          : lugar.audioguia.url
                   }
                   duracionSegundos={lugar.audioguia.duracionSegundos}
                   idioma={lugar.audioguia.idioma}
