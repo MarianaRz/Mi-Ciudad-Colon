@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSesion } from "../../contextos/SesionContext";
 
-import { obtenerEventoPorId } from "../../servicios/eventos";
+import { obtenerEventoPorIdApi } from "../../api/eventos";
 
 import {
   actualizarNotificacionGuardada,
@@ -27,12 +27,13 @@ import {
   obtenerNotificacionGuardada,
   quitarEventoGuardado,
 } from "../../servicios/eventosGuardados";
-import { obtenerLugarPorId } from "../../servicios/lugares";
+import { obtenerLugarPorIdApi } from "../../api/lugares";
 import {
   cancelarRecordatorio,
   cancelarRecordatoriosEvento,
   programarRecordatorioEvento,
 } from "../../servicios/notificaciones";
+import { ErrorApi } from "../../tipos/api";
 import { Evento } from "../../tipos/evento";
 
 import {
@@ -44,7 +45,7 @@ import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoDetalle =
   | { fase: "cargando" }
-  | { fase: "error"; mensaje: string }
+  | { fase: "error"; mensaje: string; reintentable: boolean }
   | { fase: "listo"; evento: Evento; ubicacion: string };
 
 const AVISOS_ESTADO: Partial<Record<Evento["estado"], string>> = {
@@ -94,6 +95,8 @@ export default function DetalleEventoScreen() {
 
   const [guardando, setGuardando] = useState(false);
 
+  const [intento, setIntento] = useState(0);
+
   // Cargar los datos del evento
   useEffect(() => {
     let activo = true;
@@ -104,13 +107,13 @@ export default function DetalleEventoScreen() {
       setDescripcionExpandida(false);
 
       try {
-        const evento = await obtenerEventoPorId(id);
+        const evento = await obtenerEventoPorIdApi(id);
 
         let ubicacion = evento.direccionLibre ?? "Ubicación a confirmar";
 
         if (evento.lugarId !== null) {
           try {
-            const lugar = await obtenerLugarPorId(evento.lugarId);
+            const lugar = await obtenerLugarPorIdApi(evento.lugarId);
             ubicacion = lugar.nombre;
           } catch {
             ubicacion = "Lugar no disponible";
@@ -132,9 +135,14 @@ export default function DetalleEventoScreen() {
             ? error.message
             : "Ocurrió un error al cargar el evento.";
 
+        const reintentable = !(
+          error instanceof ErrorApi && error.codigo === "EVENTO_NO_ENCONTRADO"
+        );
+
         setEstado({
           fase: "error",
           mensaje,
+          reintentable,
         });
       }
     }
@@ -144,7 +152,7 @@ export default function DetalleEventoScreen() {
     return () => {
       activo = false;
     };
-  }, [id]);
+  }, [id, intento]);
 
   // Consultar si el evento está guardado en SQLite
   useEffect(() => {
@@ -312,6 +320,17 @@ export default function DetalleEventoScreen() {
           <Ionicons name="alert-circle-outline" size={42} color="#B42318" />
 
           <Text style={styles.textoCentro}>{estado.mensaje}</Text>
+
+          {estado.reintentable && (
+            <Pressable
+              style={styles.botonReintentar}
+              onPress={() => setIntento((anterior) => anterior + 1)}
+              accessibilityRole="button"
+              accessibilityLabel="Reintentar cargar el evento"
+            >
+              <Text style={styles.textoBotonReintentar}>Reintentar</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -561,6 +580,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#64748B",
     textAlign: "center",
+  },
+
+  botonReintentar: {
+    minHeight: 52,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#075985",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  textoBotonReintentar: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 
   contenedorImagen: {
