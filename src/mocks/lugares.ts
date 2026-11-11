@@ -84,31 +84,4 @@ export const lugaresMock: Lugar[] = [
     activo: true,
     actualizadoEn: "2026-09-10T09:00:00-03:00",
   },
-  // ################################################################
-  {
-    id: "lug-008",
-    nombre: "Iglesia de la Plaza San Martín",
-    categoriaId: "cat-cultura",
-    descripcionCorta: "Templo histórico frente a la Plaza San Martín.",
-    descripcion: "Construcción religiosa tradicional de principios de siglo.",
-    coordenadas: {
-      latitud: -32.221,
-      longitud: -58.14,
-    },
-    direccion: "Plaza San Martín, Colón",
-    imagenes: [],
-    horarios: [],
-    telefono: null,
-    sitioWeb: null,
-    precioEntrada: 0,
-    audioguia: {
-      url: "http://192.168.1.4:3000/archivos/audios/iglesia-san-martin.mp3",
-      duracionSegundos: 184,
-      idioma: "es",
-    },
-    codigoQr: "COLON:lug-008",
-    accesible: true,
-    activo: true,
-    actualizadoEn: "2026-11-10T02:30:00-03:00",
-  },
 ];
