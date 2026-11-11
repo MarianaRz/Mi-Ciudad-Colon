@@ -10,10 +10,10 @@ import {
   View,
 } from "react-native";
 
+import { obtenerEventosApi } from "../../api/eventos";
+import { obtenerLugaresApi } from "../../api/lugares";
 import { TarjetaEvento } from "../../components/TarjetaEvento";
 import { useSesion } from "../../contextos/SesionContext";
-import { obtenerEventos } from "../../servicios/eventos";
-import { obtenerLugares } from "../../servicios/lugares";
 import { comprobarCambiosAgenda } from "../../servicios/seguimientoAgenda";
 import { armarSecciones, SeccionAgenda } from "../../utils/agenda";
 
@@ -40,8 +40,8 @@ export default function AgendaScreen() {
 
         try {
           const [respuestaEventos, respuestaLugares] = await Promise.all([
-            obtenerEventos(),
-            obtenerLugares(),
+            obtenerEventosApi(),
+            obtenerLugaresApi(),
           ]);
 
           if (!activo) {
