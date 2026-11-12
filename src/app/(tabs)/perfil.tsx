@@ -202,6 +202,27 @@ export default function PerfilScreen() {
           </Pressable>
         </Link>
 
+        <Link href="/eventos-guardados" asChild>
+          <Pressable
+            style={styles.tarjetaAcceso}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir mis eventos"
+          >
+            <View style={styles.iconoAccesoAzul}>
+              <Ionicons name="calendar-outline" size={26} color={AZUL} />
+            </View>
+
+            <View style={styles.textosAcceso}>
+              <Text style={styles.tituloAcceso}>Mis eventos</Text>
+              <Text style={styles.subtituloAcceso}>
+                Los eventos a los que querés ir
+              </Text>
+            </View>
+
+            <Text style={styles.flecha}>›</Text>
+          </Pressable>
+        </Link>
+
         <Link href="/(tabs)/recorrido" asChild>
           <Pressable
             style={styles.tarjetaAcceso}

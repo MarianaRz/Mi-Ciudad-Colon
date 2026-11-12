@@ -19,6 +19,7 @@ import { useSesion } from "../../contextos/SesionContext";
 
 import { obtenerEventoPorIdApi } from "../../api/eventos";
 
+import { obtenerLugarPorIdApi } from "../../api/lugares";
 import {
   actualizarNotificacionGuardada,
   actualizarSeguimientoEvento,
@@ -26,8 +27,8 @@ import {
   guardarEvento,
   obtenerNotificacionGuardada,
   quitarEventoGuardado,
+  sincronizarEventosGuardados,
 } from "../../servicios/eventosGuardados";
-import { obtenerLugarPorIdApi } from "../../api/lugares";
 import {
   cancelarRecordatorio,
   cancelarRecordatoriosEvento,
@@ -36,12 +37,12 @@ import {
 import { ErrorApi } from "../../tipos/api";
 import { Evento } from "../../tipos/evento";
 
+import { confirmarAccion } from "../../servicios/haptica";
 import {
   formatearDia,
   formatearDuracion,
   formatearHora,
 } from "../../utils/fechas";
-import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoDetalle =
   | { fase: "cargando" }
@@ -188,6 +189,20 @@ export default function DetalleEventoScreen() {
           setConsultandoGuardado(false);
         }
       }
+
+      if (!activo) {
+        return;
+      }
+
+      try {
+        await sincronizarEventosGuardados(sesion.email);
+
+        const existeActualizado = await estaEventoGuardado(sesion.email, id);
+
+        if (activo) {
+          setGuardado(existeActualizado);
+        }
+      } catch {}
     }
 
     consultarGuardado();
@@ -199,9 +214,15 @@ export default function DetalleEventoScreen() {
 
   const evento = estado.fase === "listo" ? estado.evento : null;
 
+  const sePuedeGuardar =
+    evento?.estado === "programado" || evento?.estado === "suspendido";
+
+  const botonGuardarDeshabilitado =
+    guardando || consultandoGuardado || (!guardado && !sePuedeGuardar);
+
   // Guardar o quitar un evento
   async function alternarGuardado() {
-    if (!evento || guardando || consultandoGuardado) {
+    if (!evento || botonGuardarDeshabilitado) {
       return;
     }
 
@@ -295,6 +316,8 @@ export default function DetalleEventoScreen() {
     } finally {
       setGuardando(false);
     }
+
+    void sincronizarEventosGuardados(sesion.email).catch(() => {});
   }
 
   const mostrarImagen = evento?.imagenUrl != null && !imagenFallida;
@@ -515,17 +538,20 @@ export default function DetalleEventoScreen() {
                 style={[
                   styles.botonGuardar,
                   guardado && styles.botonGuardado,
-                  (guardando || consultandoGuardado) &&
-                    styles.botonDeshabilitado,
+                  botonGuardarDeshabilitado && styles.botonDeshabilitado,
                 ]}
                 onPress={alternarGuardado}
-                disabled={guardando || consultandoGuardado}
+                disabled={botonGuardarDeshabilitado}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  guardado ? "Quitar evento guardado" : "Guardar evento"
+                  guardado
+                    ? "Quitar evento guardado"
+                    : sePuedeGuardar
+                      ? "Guardar evento"
+                      : "Este evento no se puede guardar"
                 }
                 accessibilityState={{
-                  disabled: guardando || consultandoGuardado,
+                  disabled: botonGuardarDeshabilitado,
                 }}
               >
                 <Ionicons
@@ -546,7 +572,9 @@ export default function DetalleEventoScreen() {
                       ? "Guardando..."
                       : guardado
                         ? "Evento guardado"
-                        : "Guardar evento"}
+                        : sePuedeGuardar
+                          ? "Guardar evento"
+                          : "No se puede guardar"}
                 </Text>
               </Pressable>
             </View>

@@ -1,5 +1,7 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useConectividad } from "../../hooks/useConectividad";
+import { sincronizarEventosGuardados } from "../../servicios/eventosGuardados";
 
 import {
   ActivityIndicator,
@@ -30,6 +32,16 @@ export default function AgendaScreen() {
   });
 
   const [intento, setIntento] = useState(0);
+
+  const conectividad = useConectividad();
+
+  useEffect(() => {
+    if (conectividad !== "conectado" || cargandoSesion || !sesion) {
+      return;
+    }
+
+    void sincronizarEventosGuardados(sesion.email).catch(() => {});
+  }, [conectividad, cargandoSesion, sesion?.email]);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,11 +74,14 @@ export default function AgendaScreen() {
           // corresponde a los eventos guardados por cada usuario.
           if (!cargandoSesion && sesion) {
             try {
+              await sincronizarEventosGuardados(sesion.email);
+            } catch {}
+
+            try {
               await comprobarCambiosAgenda(
                 sesion.email,
                 respuestaEventos.datos,
               );
-
             } catch (error) {
               console.error("ERROR AL COMPROBAR CAMBIOS DE AGENDA:", error);
             }

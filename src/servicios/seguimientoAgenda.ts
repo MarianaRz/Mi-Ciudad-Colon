@@ -6,7 +6,9 @@ import {
 
 import {
   notificarCambioEstadoEvento,
+  programarRecordatorioEvento,
   reprogramarRecordatorioEvento,
+  tienePermisoNotificaciones,
 } from "./notificaciones";
 
 import { Evento } from "../tipos/evento";
@@ -25,6 +27,8 @@ export async function comprobarCambiosAgenda(
   eventos: Evento[],
 ): Promise<void> {
   const guardados = await obtenerSeguimientoEventosGuardados(usuarioEmail);
+
+  const permisoNotificaciones = await tienePermisoNotificaciones();
 
   for (const guardado of guardados) {
     const evento = eventos.find((item) => item.id === guardado.eventoId);
@@ -57,6 +61,24 @@ export async function comprobarCambiosAgenda(
       continue;
     }
 
+    if (
+      guardado.notificacionId === null &&
+      !cambioEstado &&
+      !cambioInicio &&
+      permisoNotificaciones
+    ) {
+      const nuevoIdentificador = await programarRecordatorioEvento(
+        evento,
+        usuarioEmail,
+      );
+
+      await actualizarNotificacionGuardada(
+        usuarioEmail,
+        evento.id,
+        nuevoIdentificador,
+      );
+    }
+
     // Si no hubo cambios, no hacemos nada.
     if (!cambioEstado && !cambioInicio) {
       continue;
@@ -69,7 +91,7 @@ export async function comprobarCambiosAgenda(
       usuarioEmail,
       guardado.notificacionId,
     );
-    
+
     await actualizarNotificacionGuardada(
       usuarioEmail,
       evento.id,
