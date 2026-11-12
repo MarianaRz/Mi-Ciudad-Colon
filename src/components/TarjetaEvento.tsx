@@ -1,18 +1,21 @@
+import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
 import { useState } from "react";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
-import Ionicons from "@react-native-vector-icons/ionicons";
-
+import { useTema } from "../tema/TemaContext";
 import { EstadoEvento, Evento } from "../tipos/evento";
 import { formatearHora } from "../utils/fechas";
+import Texto from "./ui/Texto";
 
 interface TarjetaEventoProps {
   evento: Evento;
   ubicacion: string;
 }
+
+type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
 
 const ETIQUETAS_ESTADO: Record<EstadoEvento, string> = {
   programado: "Programado",
@@ -21,23 +24,11 @@ const ETIQUETAS_ESTADO: Record<EstadoEvento, string> = {
   finalizado: "Finalizado",
 };
 
-const COLORES_ESTADO: Record<EstadoEvento, { fondo: string; texto: string }> = {
-  programado: {
-    fondo: "#E0F2FE",
-    texto: "#075985",
-  },
-  suspendido: {
-    fondo: "#FEF0C7",
-    texto: "#93370D",
-  },
-  cancelado: {
-    fondo: "#FEE4E2",
-    texto: "#B42318",
-  },
-  finalizado: {
-    fondo: "#F2F4F7",
-    texto: "#475467",
-  },
+const ICONOS_ESTADO: Record<EstadoEvento, NombreIcono> = {
+  programado: "checkmark-circle",
+  suspendido: "pause-circle",
+  cancelado: "close-circle",
+  finalizado: "checkmark-done-circle",
 };
 
 function textoPrecio(precio: number | null): string {
@@ -48,6 +39,7 @@ function textoPrecio(precio: number | null): string {
 }
 
 export function TarjetaEvento({ evento, ubicacion }: TarjetaEventoProps) {
+  const { colores } = useTema();
   const [imagenFallida, setImagenFallida] = useState(false);
 
   const inicio = new Date(evento.inicio);
@@ -61,7 +53,12 @@ export function TarjetaEvento({ evento, ubicacion }: TarjetaEventoProps) {
 
   const noProgramado = evento.estado !== "programado";
 
-  const colores = COLORES_ESTADO[evento.estado];
+  const coloresEstado = {
+    programado: { fondo: colores.primarioSuave, texto: colores.primarioFuerte },
+    suspendido: { fondo: colores.advertenciaSuave, texto: colores.advertencia },
+    cancelado: { fondo: colores.errorSuave, texto: colores.error },
+    finalizado: { fondo: colores.borde, texto: colores.textoSecundario },
+  }[evento.estado];
 
   const mostrarImagen = evento.imagenUrl !== null && !imagenFallida;
 
@@ -75,65 +72,138 @@ export function TarjetaEvento({ evento, ubicacion }: TarjetaEventoProps) {
     >
       <Pressable
         style={StyleSheet.flatten([
-          styles.tarjeta,
-          noProgramado && styles.atenuada,
+          estilos.tarjeta,
+          {
+            backgroundColor: colores.superficie,
+            borderColor: colores.borde,
+          },
+          noProgramado && estilos.atenuada,
         ])}
         accessibilityRole="button"
         accessibilityLabel={`${evento.titulo}. ${horario}. ${ubicacion}. ${textoPrecio(evento.precio)}. ${ETIQUETAS_ESTADO[evento.estado]}`}
       >
-        <View style={styles.contenedorImagen}>
+        <View
+          style={[
+            estilos.contenedorImagen,
+            { backgroundColor: colores.primarioSuave },
+          ]}
+        >
           {mostrarImagen ? (
             <Image
               source={{ uri: evento.imagenUrl! }}
-              style={styles.imagen}
+              style={estilos.imagen}
               contentFit="cover"
               transition={200}
               onError={() => setImagenFallida(true)}
             />
           ) : (
-            <View style={styles.placeholder}>
-              <Ionicons name="calendar-outline" size={42} color="#075985" />
+            <View style={estilos.placeholder}>
+              <Ionicons
+                name="calendar-outline"
+                size={42}
+                color={colores.primarioFuerte}
+              />
 
-              <Text style={styles.textoPlaceholder}>Imagen no disponible</Text>
+              <Texto style={{ fontSize: 14, color: colores.textoSecundario }}>
+                Imagen no disponible
+              </Texto>
             </View>
           )}
 
           {noProgramado && (
-            <View style={[styles.estado, { backgroundColor: colores.fondo }]}>
-              <Text style={[styles.textoEstado, { color: colores.texto }]}>
+            <View
+              style={[estilos.estado, { backgroundColor: coloresEstado.fondo }]}
+            >
+              <Ionicons
+                name={ICONOS_ESTADO[evento.estado]}
+                size={16}
+                color={coloresEstado.texto}
+              />
+
+              <Texto
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: coloresEstado.texto,
+                }}
+              >
                 {ETIQUETAS_ESTADO[evento.estado]}
-              </Text>
+              </Texto>
             </View>
           )}
         </View>
 
-        <View style={styles.contenido}>
-          <View style={styles.fila}>
-            <Ionicons name="time-outline" size={18} color="#075985" />
+        <View style={estilos.contenido}>
+          <View
+            style={[
+              estilos.pastillaHorario,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="time-outline"
+              size={16}
+              color={colores.primarioFuerte}
+            />
 
-            <Text style={styles.horario}>{horario}</Text>
+            <Texto
+              style={{
+                fontSize: 14,
+                fontWeight: "700",
+                color: colores.primarioFuerte,
+              }}
+            >
+              {horario}
+            </Texto>
           </View>
 
-          <Text style={styles.titulo} numberOfLines={2}>
+          <Texto
+            numberOfLines={2}
+            style={{ fontSize: 19, lineHeight: 26, fontWeight: "700" }}
+          >
             {evento.titulo}
-          </Text>
+          </Texto>
 
-          <View style={styles.fila}>
-            <Ionicons name="location-outline" size={18} color="#64748B" />
+          <View style={estilos.fila}>
+            <Ionicons
+              name="location-outline"
+              size={18}
+              color={colores.textoSecundario}
+            />
 
-            <Text style={styles.ubicacion} numberOfLines={2}>
+            <Texto
+              numberOfLines={2}
+              style={{
+                flex: 1,
+                fontSize: 14,
+                lineHeight: 20,
+                color: colores.textoSecundario,
+              }}
+            >
               {ubicacion}
-            </Text>
+            </Texto>
           </View>
 
-          <View style={styles.filaInferior}>
-            <View style={styles.fila}>
-              <Ionicons name="ticket-outline" size={18} color="#075985" />
+          <View
+            style={[estilos.filaInferior, { borderTopColor: colores.borde }]}
+          >
+            <View style={estilos.fila}>
+              <Ionicons
+                name="ticket-outline"
+                size={18}
+                color={colores.primarioFuerte}
+              />
 
-              <Text style={styles.precio}>{textoPrecio(evento.precio)}</Text>
+              <Texto style={{ fontSize: 15, fontWeight: "700" }}>
+                {textoPrecio(evento.precio)}
+              </Texto>
             </View>
 
-            <Ionicons name="chevron-forward" size={22} color="#64748B" />
+            <Ionicons
+              name="chevron-forward"
+              size={22}
+              color={colores.textoSecundario}
+            />
           </View>
         </View>
       </Pressable>
@@ -141,14 +211,11 @@ export function TarjetaEvento({ evento, ubicacion }: TarjetaEventoProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const estilos = StyleSheet.create({
   tarjeta: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     overflow: "hidden",
-
     borderWidth: 1,
-    borderColor: "#E2E8F0",
 
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 3 },
@@ -158,12 +225,11 @@ const styles = StyleSheet.create({
   },
 
   atenuada: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
 
   contenedorImagen: {
     height: 170,
-    backgroundColor: "#E8EEF4",
   },
 
   imagen: {
@@ -176,32 +242,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#E8EEF4",
-  },
-
-  textoPlaceholder: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#64748B",
   },
 
   estado: {
     position: "absolute",
     top: 12,
     right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
   },
 
-  textoEstado: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-
   contenido: {
     padding: 16,
     gap: 12,
+  },
+
+  pastillaHorario: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
 
   fila: {
@@ -210,39 +277,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  horario: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#075985",
-  },
-
-  titulo: {
-    fontSize: 19,
-    fontWeight: "700",
-    lineHeight: 26,
-    color: "#17202A",
-  },
-
-  ubicacion: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#64748B",
-  },
-
   filaInferior: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-
-  precio: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#17202A",
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

@@ -1,15 +1,21 @@
+import Ionicons from "@react-native-vector-icons/ionicons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useSesion } from "../contextos/SesionContext";
 import { biometriaDisponible } from "../servicios/biometria";
+import { useTema } from "../tema/TemaContext";
+import Aviso from "./ui/Aviso";
+import Boton from "./ui/Boton";
+import Texto from "./ui/Texto";
 
 interface BloqueoSesionProps {
   email: string;
 }
 
 export function BloqueoSesion({ email }: BloqueoSesionProps) {
+  const { colores } = useTema();
   const { desbloquear, cerrarSesion } = useSesion();
   const [hayBiometria, setHayBiometria] = useState<boolean | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -45,110 +51,114 @@ export function BloqueoSesion({ email }: BloqueoSesionProps) {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Hola de nuevo</Text>
-      <Text style={styles.email}>{email}</Text>
+    <View style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
+      <View style={estilos.encabezado}>
+        <View
+          style={[estilos.icono, { backgroundColor: colores.primarioSuave }]}
+        >
+          <Ionicons
+            name="lock-closed-outline"
+            size={44}
+            color={colores.primarioFuerte}
+          />
+        </View>
+
+        <Texto style={estilos.titulo}>Hola de nuevo</Texto>
+
+        <View
+          style={[
+            estilos.chipEmail,
+            { backgroundColor: colores.primarioSuave },
+          ]}
+        >
+          <Texto
+            style={{
+              fontSize: 15,
+              fontWeight: "700",
+              color: colores.primarioFuerte,
+            }}
+            numberOfLines={1}
+          >
+            {email}
+          </Texto>
+        </View>
+      </View>
 
       {hayBiometria === null && (
-        <Text style={styles.texto}>Verificando tu dispositivo...</Text>
+        <View style={estilos.verificando}>
+          <ActivityIndicator color={colores.primarioFuerte} />
+          <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
+            Verificando tu dispositivo...
+          </Texto>
+        </View>
       )}
 
       {hayBiometria === true && (
         <>
-          <Text style={styles.texto}>
-            Confirmá tu identidad para ver tu cuenta.
-          </Text>
-
-          <Pressable
-            style={styles.botonPrincipal}
-            onPress={entrar}
-            role="button"
-            accessibilityLabel="Entrar con huella o rostro"
+          <Texto
+            style={{
+              fontSize: 16,
+              lineHeight: 24,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
           >
-            <Text style={styles.textoBotonPrincipal}>
-              Entrar con huella o rostro
-            </Text>
-          </Pressable>
+            Confirmá tu identidad para ver tu cuenta.
+          </Texto>
+
+          <Boton
+            titulo="Entrar con huella o rostro"
+            onPress={() => void entrar()}
+          />
         </>
       )}
 
       {hayBiometria === false && (
-        <Text style={styles.texto}>
-          Este dispositivo no tiene huella ni rostro configurados. Iniciá sesión
-          con tu contraseña.
-        </Text>
+        <Aviso
+          tipo="info"
+          mensaje="Este dispositivo no tiene huella ni rostro configurados. Iniciá sesión con tu contraseña."
+        />
       )}
 
-      {mensaje && <Text style={styles.error}>{mensaje}</Text>}
+      {mensaje ? <Aviso mensaje={mensaje} /> : null}
 
       {hayBiometria !== null && (
-        <Pressable
-          style={styles.botonSecundario}
-          onPress={usarContraseña}
-          role="button"
-          accessibilityLabel="Usar contraseña"
-        >
-          <Text style={styles.textoBotonSecundario}>Usar contraseña</Text>
-        </Pressable>
+        <Boton
+          titulo="Usar contraseña"
+          variante="secundario"
+          onPress={() => void usarContraseña()}
+        />
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const estilos = StyleSheet.create({
+  contenedor: {
     flex: 1,
     padding: 24,
     gap: 16,
-    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  email: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#075985",
-  },
-  texto: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#5F6B76",
-  },
-  error: {
-    fontSize: 14,
-    color: "#B42318",
-  },
-  botonPrincipal: {
-    minHeight: 52,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: "#075985",
+  encabezado: { alignItems: "center", gap: 12, marginBottom: 8 },
+  icono: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     alignItems: "center",
     justifyContent: "center",
   },
-  textoBotonPrincipal: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  titulo: { fontSize: 28, lineHeight: 36, fontWeight: "700" },
+  chipEmail: {
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    maxWidth: "100%",
   },
-  botonSecundario: {
-    minHeight: 52,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: "#075985",
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+  verificando: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-  },
-  textoBotonSecundario: {
-    color: "#075985",
-    fontSize: 16,
-    fontWeight: "700",
+    gap: 10,
   },
 });
