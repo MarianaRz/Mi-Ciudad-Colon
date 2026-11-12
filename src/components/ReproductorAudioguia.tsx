@@ -18,7 +18,11 @@ import {
   descargarAudioguia,
   obtenerAudioguiaDescargada,
 } from "../servicios/audioguias";
-
+// ############################################
+import { colores } from "../tema/colores";
+import { espaciados } from "../tema/espaciados";
+import { tipografia } from "../tema/tipografia";
+// ############################################
 interface Props {
   lugarId: string;
   url: string | number;
@@ -27,7 +31,9 @@ interface Props {
 }
 
 const AZUL = "#075985";
-
+// #######################################
+const SALTO_SEGUNDOS = 15;
+// #######################################
 function formatearTiempo(segundos: number): string {
   const total = Math.max(0, Math.floor(segundos));
   const minutos = Math.floor(total / 60);
@@ -181,6 +187,26 @@ function ReproductorInterno({
 
   const duracion = estado.duration > 0 ? estado.duration : duracionSegundos;
 
+  const faltan = Math.max(0, duracion - estado.currentTime);
+
+  async function saltar(segundos: number) {
+    if (cargando || procesando) return;
+
+    const destino = Math.min(
+      Math.max(0, estado.currentTime + segundos),
+      duracion,
+    );
+
+    try {
+      await player.seekTo(destino);
+    } catch {
+      Alert.alert(
+        "Error de reproducción",
+        "No pudimos mover la audioguía. Intentá nuevamente.",
+      );
+    }
+  }
+
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
@@ -196,7 +222,7 @@ function ReproductorInterno({
         </View>
       </View>
 
-      <View style={styles.controles}>
+      {/* <View style={styles.controles}>
         <Pressable
           style={[
             styles.boton,
@@ -227,7 +253,64 @@ function ReproductorInterno({
         <Text style={styles.tiempo}>
           {formatearTiempo(estado.currentTime)} / {formatearTiempo(duracion)}
         </Text>
+      </View> */}
+      <View style={styles.controles}>
+        <Pressable
+          style={[styles.botonSalto, cargando && styles.botonDeshabilitado]}
+          onPress={() => void saltar(-SALTO_SEGUNDOS)}
+          disabled={cargando}
+          accessibilityRole="button"
+          accessibilityLabel={`Retroceder ${SALTO_SEGUNDOS} segundos`}
+          accessibilityState={{ disabled: cargando }}
+        >
+          <Ionicons name="play-back" size={20} color={AZUL} />
+          <Text style={styles.textoSalto}>{SALTO_SEGUNDOS}</Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            styles.boton,
+            (cargando || procesando) && styles.botonDeshabilitado,
+          ]}
+          onPress={() => void alternarReproduccion()}
+          disabled={cargando || procesando}
+          accessibilityRole="button"
+          accessibilityLabel={
+            reproduciendo ? "Pausar audioguía" : "Reproducir audioguía"
+          }
+        >
+          {cargando || procesando ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Ionicons
+              name={reproduciendo ? "pause" : "play"}
+              size={24}
+              color="#FFFFFF"
+            />
+          )}
+
+          <Text style={styles.textoBoton}>
+            {cargando ? "Cargando..." : reproduciendo ? "Pausar" : "Reproducir"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.botonSalto, cargando && styles.botonDeshabilitado]}
+          onPress={() => void saltar(SALTO_SEGUNDOS)}
+          disabled={cargando}
+          accessibilityRole="button"
+          accessibilityLabel={`Adelantar ${SALTO_SEGUNDOS} segundos`}
+          accessibilityState={{ disabled: cargando }}
+        >
+          <Ionicons name="play-forward" size={20} color={AZUL} />
+          <Text style={styles.textoSalto}>{SALTO_SEGUNDOS}</Text>
+        </Pressable>
       </View>
+
+      <Text style={styles.tiempo}>
+        {formatearTiempo(estado.currentTime)} / {formatearTiempo(duracion)} ·
+        Faltan {formatearTiempo(faltan)}
+      </Text>
 
       {disponibleOffline ? (
         <View style={styles.estadoOffline}>
@@ -300,11 +383,17 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
   controles: {
+    // ###################
+    justifyContent: "center",
+    // ###################
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
   },
   boton: {
+    // ###################
+    flex: 1,
+    // ###################
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -323,6 +412,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   tiempo: {
+    // ###################
+    textAlign: "center",
+    // ###################
     color: "#475569",
     fontSize: 14,
     fontWeight: "600",
@@ -352,5 +444,21 @@ const styles = StyleSheet.create({
   error: {
     color: "#B42318",
     fontSize: 14,
+  },
+  // ########################
+  botonSalto: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colores.borde,
+    backgroundColor: colores.superficie,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: espaciados.xs,
+  },
+  textoSalto: {
+    ...tipografia.secundario,
+    color: colores.textoSecundario,
   },
 });

@@ -16,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { obtenerCategoriasApi } from "../../api/categorias";
+import { obtenerLugarPorIdApi } from "../../api/lugares";
 import ReproductorAudioguia from "../../components/ReproductorAudioguia";
 import { useSesion } from "../../contextos/SesionContext";
 import {
@@ -24,12 +26,10 @@ import {
   quitarFavorito,
   sincronizarFavoritos,
 } from "../../servicios/favoritos";
+import { confirmarAccion } from "../../servicios/haptica";
 import type { Categoria } from "../../tipos/categoria";
 import type { Lugar } from "../../tipos/lugar";
 import { obtenerEstadoHorario } from "../../utils/horarios";
-import { confirmarAccion } from "../../servicios/haptica";
-import { obtenerCategoriasApi } from "../../api/categorias";
-import { obtenerLugarPorIdApi } from "../../api/lugares";
 
 const AZUL = "#075985";
 
@@ -102,42 +102,42 @@ export default function DetalleLugarScreen() {
     useCallback(() => {
       let activo = true;
 
-            async function consultarFavorito() {
-              if (!sesion || bloqueada || !id) {
-                setFavorito(false);
-                setCargandoFavorito(false);
-                return;
-              }
+      async function consultarFavorito() {
+        if (!sesion || bloqueada || !id) {
+          setFavorito(false);
+          setCargandoFavorito(false);
+          return;
+        }
 
-              try {
-                setCargandoFavorito(true);
+        try {
+          setCargandoFavorito(true);
 
-                const resultadoLocal = await esFavorito(sesion.email, id);
+          const resultadoLocal = await esFavorito(sesion.email, id);
 
-                if (!activo) return;
-                setFavorito(resultadoLocal);
-              } catch {
-                if (activo) {
-                  Alert.alert("Error", "No pudimos consultar tus favoritos.");
-                }
-                return;
-              } finally {
-                if (activo) setCargandoFavorito(false);
-              }
+          if (!activo) return;
+          setFavorito(resultadoLocal);
+        } catch {
+          if (activo) {
+            Alert.alert("Error", "No pudimos consultar tus favoritos.");
+          }
+          return;
+        } finally {
+          if (activo) setCargandoFavorito(false);
+        }
 
-              if (!activo) return;
+        if (!activo) return;
 
-              try {
-                await sincronizarFavoritos(sesion.email);
+        try {
+          await sincronizarFavoritos(sesion.email);
 
-                const resultadoActualizado = await esFavorito(sesion.email, id);
+          const resultadoActualizado = await esFavorito(sesion.email, id);
 
-                if (activo) setFavorito(resultadoActualizado);
-              } catch {
-                // Si la API no está disponible, conservamos el estado local.
-                // La sincronización podrá reintentarse cuando vuelvas al detalle.
-              }
-            }
+          if (activo) setFavorito(resultadoActualizado);
+        } catch {
+          // Si la API no está disponible, conservamos el estado local.
+          // La sincronización podrá reintentarse cuando vuelvas al detalle.
+        }
+      }
 
       void consultarFavorito();
 
@@ -405,7 +405,11 @@ export default function DetalleLugarScreen() {
                   url={
                     lugar.id === "lug-004"
                       ? require("../../../assets/audio/molino-forclaz.mp3")
-                      : lugar.audioguia.url
+                      : lugar.id === "lug-008"
+                        ? require("../../../assets/audio/iglesia-san-martin.mp3")
+                        : lugar.id === "lug-007"
+                          ? require("../../../assets/audio/puerto-viejo.mp3")
+                          : lugar.audioguia.url
                   }
                   duracionSegundos={lugar.audioguia.duracionSegundos}
                   idioma={lugar.audioguia.idioma}
