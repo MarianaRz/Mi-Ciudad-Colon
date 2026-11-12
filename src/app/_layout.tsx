@@ -89,12 +89,11 @@ export default function RootLayout() {
             name="lugares"
             options={{
               title: "Lugares",
-              headerStyle: {
-                backgroundColor: "#075985",
-              },
-              headerTintColor: "#FFFFFF",
+              headerStyle: { backgroundColor: "#FFFFFF" },
+              headerTintColor: "#141B2D",
               headerTitleStyle: {
-                fontWeight: "700",
+                fontFamily: "PlusJakartaSans_700Bold",
+                fontSize: 18,
               },
               headerShadowVisible: false,
             }}

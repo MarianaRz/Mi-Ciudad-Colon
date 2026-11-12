@@ -1,7 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   ActivityIndicator,
@@ -9,12 +9,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 
 import { obtenerEventoPorId } from "../../servicios/eventos";
@@ -33,19 +33,23 @@ import {
   cancelarRecordatoriosEvento,
   programarRecordatorioEvento,
 } from "../../servicios/notificaciones";
+import { useTema } from "../../tema/TemaContext";
+import { fuentes } from "../../tema/tipografia";
 import { Evento } from "../../tipos/evento";
 
+import { confirmarAccion } from "../../servicios/haptica";
 import {
   formatearDia,
   formatearDuracion,
   formatearHora,
 } from "../../utils/fechas";
-import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoDetalle =
   | { fase: "cargando" }
   | { fase: "error"; mensaje: string }
   | { fase: "listo"; evento: Evento; ubicacion: string };
+
+type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
 
 const AVISOS_ESTADO: Partial<Record<Evento["estado"], string>> = {
   suspendido: "Este evento fue suspendido.",
@@ -53,19 +57,10 @@ const AVISOS_ESTADO: Partial<Record<Evento["estado"], string>> = {
   finalizado: "Este evento ya finalizó.",
 };
 
-const COLORES_ESTADO = {
-  suspendido: {
-    fondo: "#FEF0C7",
-    texto: "#93370D",
-  },
-  cancelado: {
-    fondo: "#FEE4E2",
-    texto: "#B42318",
-  },
-  finalizado: {
-    fondo: "#F2F4F7",
-    texto: "#475467",
-  },
+const ICONOS_ESTADO: Partial<Record<Evento["estado"], NombreIcono>> = {
+  suspendido: "pause-circle",
+  cancelado: "close-circle",
+  finalizado: "checkmark-done-circle",
 };
 
 function formatearPrecio(precio: number | null): string {
@@ -77,6 +72,7 @@ function formatearPrecio(precio: number | null): string {
 
 export default function DetalleEventoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { colores } = useTema();
 
   const { sesion, cargando: cargandoSesion } = useSesion();
 
@@ -293,233 +289,355 @@ export default function DetalleEventoScreen() {
 
   const descripcionLarga = (evento?.descripcion.length ?? 0) > 250;
 
+  const botonInactivo = guardando || consultandoGuardado;
+
+  const coloresEstado = {
+    suspendido: { fondo: colores.advertenciaSuave, texto: colores.advertencia },
+    cancelado: { fondo: colores.errorSuave, texto: colores.error },
+    finalizado: { fondo: colores.borde, texto: colores.textoSecundario },
+  };
+
   return (
     <>
-      <Stack.Screen options={{ title: "Evento" }} />
+      <Stack.Screen
+        options={{
+          title: "Evento",
+          headerStyle: { backgroundColor: colores.superficie },
+          headerTintColor: colores.texto,
+          headerTitleStyle: { fontFamily: fuentes.negrita, fontSize: 18 },
+          headerShadowVisible: false,
+        }}
+      />
 
       {/* Cargando */}
       {estado.fase === "cargando" && (
-        <View style={styles.centro}>
-          <ActivityIndicator size="large" color="#075985" />
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <ActivityIndicator size="large" color={colores.primarioFuerte} />
 
-          <Text style={styles.textoCentro}>Cargando evento...</Text>
+          <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
+            Cargando evento...
+          </Texto>
         </View>
       )}
 
       {/* Error */}
       {estado.fase === "error" && (
-        <View style={styles.centro}>
-          <Ionicons name="alert-circle-outline" size={42} color="#B42318" />
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.errorSuave },
+            ]}
+          >
+            <Ionicons name="alert-circle" size={32} color={colores.error} />
+          </View>
 
-          <Text style={styles.textoCentro}>{estado.mensaje}</Text>
+          <Texto
+            style={{
+              fontSize: 16,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            {estado.mensaje}
+          </Texto>
         </View>
       )}
 
       {/* Detalle */}
       {estado.fase === "listo" && (
-        <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+        <SafeAreaView
+          style={[estilos.safeArea, { backgroundColor: colores.superficie }]}
+          edges={["bottom"]}
+        >
           <ScrollView
-            contentContainerStyle={styles.contenido}
+            contentContainerStyle={estilos.contenido}
             showsVerticalScrollIndicator={false}
           >
             {/* Imagen */}
-            <View style={styles.contenedorImagen}>
+            <View
+              style={[
+                estilos.contenedorImagen,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
               {mostrarImagen ? (
                 <Image
                   source={{ uri: estado.evento.imagenUrl! }}
-                  style={styles.imagen}
+                  style={estilos.imagen}
                   contentFit="cover"
                   transition={200}
                   onError={() => setImagenFallida(true)}
                 />
               ) : (
-                <View style={styles.placeholder}>
-                  <Ionicons name="calendar-outline" size={38} color="#075985" />
+                <View style={estilos.placeholder}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={40}
+                    color={colores.primarioFuerte}
+                  />
 
-                  <Text style={styles.textoPlaceholder}>
+                  <Texto
+                    style={{ fontSize: 15, color: colores.textoSecundario }}
+                  >
                     Imagen no disponible
-                  </Text>
+                  </Texto>
                 </View>
               )}
             </View>
 
-            <View style={styles.informacion}>
+            <View style={estilos.informacion}>
               {/* Título */}
-              <Text style={styles.titulo}>{estado.evento.titulo}</Text>
+              <Texto
+                style={{ fontSize: 28, lineHeight: 34, fontWeight: "700" }}
+              >
+                {estado.evento.titulo}
+              </Texto>
+
+              {/* Fecha y horario en píldoras */}
+              <View style={estilos.filaEtiquetas}>
+                <View
+                  style={[
+                    estilos.etiqueta,
+                    { backgroundColor: colores.primarioSuave },
+                  ]}
+                >
+                  <Ionicons
+                    name="calendar"
+                    size={16}
+                    color={colores.primarioFuerte}
+                  />
+                  <Texto
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: colores.primarioFuerte,
+                    }}
+                  >
+                    {formatearDia(new Date(estado.evento.inicio))}
+                  </Texto>
+                </View>
+
+                <View
+                  style={[
+                    estilos.etiqueta,
+                    { backgroundColor: colores.primarioSuave },
+                  ]}
+                >
+                  <Ionicons
+                    name="time"
+                    size={16}
+                    color={colores.primarioFuerte}
+                  />
+                  <Texto
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: colores.primarioFuerte,
+                    }}
+                  >
+                    {formatearHora(new Date(estado.evento.inicio))}
+                    {estado.evento.fin !== null &&
+                      ` a ${formatearHora(new Date(estado.evento.fin))}`}
+                  </Texto>
+                </View>
+              </View>
 
               {/* Estado del evento */}
               {estado.evento.estado !== "programado" && (
                 <View
                   style={[
-                    styles.aviso,
+                    estilos.aviso,
                     {
                       backgroundColor:
-                        COLORES_ESTADO[estado.evento.estado].fondo,
+                        coloresEstado[estado.evento.estado].fondo,
                     },
                   ]}
                 >
                   <Ionicons
-                    name="information-circle-outline"
-                    size={20}
-                    color={COLORES_ESTADO[estado.evento.estado].texto}
+                    name={
+                      ICONOS_ESTADO[estado.evento.estado] ??
+                      "information-circle"
+                    }
+                    size={22}
+                    color={coloresEstado[estado.evento.estado].texto}
                   />
 
-                  <Text
-                    style={[
-                      styles.textoAviso,
-                      {
-                        color: COLORES_ESTADO[estado.evento.estado].texto,
-                      },
-                    ]}
+                  <Texto
+                    style={{
+                      flex: 1,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: coloresEstado[estado.evento.estado].texto,
+                    }}
                   >
                     {AVISOS_ESTADO[estado.evento.estado]}
-                  </Text>
+                  </Texto>
                 </View>
               )}
 
+              <View
+                style={[estilos.separador, { backgroundColor: colores.borde }]}
+              />
+
               {/* Descripción */}
-              <View style={styles.descripcionContenedor}>
-                <Text
-                  style={styles.descripcion}
+              <Texto style={{ fontSize: 20, fontWeight: "700" }}>
+                Sobre este evento
+              </Texto>
+
+              <View style={{ gap: 8 }}>
+                <Texto
                   numberOfLines={descripcionExpandida ? undefined : 5}
+                  style={{
+                    fontSize: 16,
+                    lineHeight: 25,
+                    color: colores.textoSecundario,
+                  }}
                 >
                   {estado.evento.descripcion}
-                </Text>
+                </Texto>
 
                 {descripcionLarga && (
                   <Pressable
                     onPress={() =>
                       setDescripcionExpandida(!descripcionExpandida)
                     }
-                    accessibilityRole="button"
+                    hitSlop={8}
+                    role="button"
                     accessibilityLabel={
                       descripcionExpandida
                         ? "Leer menos descripción"
                         : "Leer descripción completa"
                     }
+                    style={estilos.leerMas}
                   >
-                    <Text style={styles.leerMas}>
+                    <Texto
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "700",
+                        color: colores.primarioFuerte,
+                      }}
+                    >
                       {descripcionExpandida ? "Leer menos" : "Leer más"}
-                    </Text>
+                    </Texto>
+                    <Ionicons
+                      name={
+                        descripcionExpandida ? "chevron-up" : "chevron-down"
+                      }
+                      size={16}
+                      color={colores.primarioFuerte}
+                    />
                   </Pressable>
                 )}
               </View>
 
+              <View
+                style={[estilos.separador, { backgroundColor: colores.borde }]}
+              />
+
               {/* Información del evento */}
-              <View style={styles.tarjetaDatos}>
-                {/* Fecha */}
-                <View style={styles.filaDato}>
-                  <View style={styles.icono}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={22}
-                      color="#075985"
-                    />
-                  </View>
+              <Texto style={{ fontSize: 20, fontWeight: "700" }}>
+                Información del evento
+              </Texto>
 
-                  <View style={styles.textosDato}>
-                    <Text style={styles.etiqueta}>Fecha</Text>
+              <FilaInformacion icono="calendar" etiqueta="Fecha">
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  {formatearDia(new Date(estado.evento.inicio))}
+                </Texto>
+              </FilaInformacion>
 
-                    <Text style={styles.valor}>
-                      {formatearDia(new Date(estado.evento.inicio))}
-                    </Text>
-                  </View>
-                </View>
+              <Divisor />
 
-                <View style={styles.divisor} />
+              <FilaInformacion icono="time" etiqueta="Horario y duración">
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  {formatearHora(new Date(estado.evento.inicio))}
+                  {estado.evento.fin !== null &&
+                    ` a ${formatearHora(new Date(estado.evento.fin))}`}
+                </Texto>
 
-                {/* Horario */}
-                <View style={styles.filaDato}>
-                  <View style={styles.icono}>
-                    <Ionicons name="time-outline" size={22} color="#075985" />
-                  </View>
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  {formatearDuracion(
+                    new Date(estado.evento.inicio),
+                    estado.evento.fin === null
+                      ? null
+                      : new Date(estado.evento.fin),
+                  )}
+                </Texto>
+              </FilaInformacion>
 
-                  <View style={styles.textosDato}>
-                    <Text style={styles.etiqueta}>Horario y duración</Text>
+              <Divisor />
 
-                    <Text style={styles.valor}>
-                      {formatearHora(new Date(estado.evento.inicio))}
-                      {estado.evento.fin !== null &&
-                        ` a ${formatearHora(new Date(estado.evento.fin))}`}
-                    </Text>
+              <FilaInformacion icono="location" etiqueta="Ubicación">
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  {estado.ubicacion}
+                </Texto>
+              </FilaInformacion>
 
-                    <Text style={styles.detalle}>
-                      {formatearDuracion(
-                        new Date(estado.evento.inicio),
-                        estado.evento.fin === null
-                          ? null
-                          : new Date(estado.evento.fin),
-                      )}
-                    </Text>
-                  </View>
-                </View>
+              <Divisor />
 
-                <View style={styles.divisor} />
-
-                {/* Ubicación */}
-                <View style={styles.filaDato}>
-                  <View style={styles.icono}>
-                    <Ionicons
-                      name="location-outline"
-                      size={22}
-                      color="#075985"
-                    />
-                  </View>
-
-                  <View style={styles.textosDato}>
-                    <Text style={styles.etiqueta}>Ubicación</Text>
-
-                    <Text style={styles.valor}>{estado.ubicacion}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.divisor} />
-
-                {/* Precio */}
-                <View style={styles.filaDato}>
-                  <View style={styles.icono}>
-                    <Ionicons name="ticket-outline" size={22} color="#075985" />
-                  </View>
-
-                  <View style={styles.textosDato}>
-                    <Text style={styles.etiqueta}>Entrada</Text>
-
-                    <Text style={styles.valor}>
-                      {formatearPrecio(estado.evento.precio)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
+              <FilaInformacion icono="ticket" etiqueta="Entrada">
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  {formatearPrecio(estado.evento.precio)}
+                </Texto>
+              </FilaInformacion>
 
               {/* Guardar evento */}
               <Pressable
                 style={[
-                  styles.botonGuardar,
-                  guardado && styles.botonGuardado,
-                  (guardando || consultandoGuardado) &&
-                    styles.botonDeshabilitado,
+                  estilos.botonGuardar,
+                  guardado
+                    ? {
+                        backgroundColor: colores.primarioSuave,
+                        borderWidth: 1.5,
+                        borderColor: colores.primarioFuerte,
+                      }
+                    : { backgroundColor: colores.primario },
+                  botonInactivo && estilos.botonDeshabilitado,
                 ]}
                 onPress={alternarGuardado}
-                disabled={guardando || consultandoGuardado}
-                accessibilityRole="button"
+                disabled={botonInactivo}
+                role="button"
                 accessibilityLabel={
                   guardado ? "Quitar evento guardado" : "Guardar evento"
                 }
                 accessibilityState={{
-                  disabled: guardando || consultandoGuardado,
+                  disabled: botonInactivo,
+                  busy: botonInactivo,
                 }}
               >
-                <Ionicons
-                  name={guardado ? "heart" : "heart-outline"}
-                  size={22}
-                  color={guardado ? "#075985" : "#FFFFFF"}
-                />
+                {botonInactivo ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={colores.primarioFuerte}
+                  />
+                ) : (
+                  <Ionicons
+                    name={guardado ? "heart" : "heart-outline"}
+                    size={22}
+                    color={
+                      guardado ? colores.primarioFuerte : colores.sobrePrimario
+                    }
+                  />
+                )}
 
-                <Text
-                  style={[
-                    styles.textoBotonGuardar,
-                    guardado && styles.textoBotonGuardado,
-                  ]}
+                <Texto
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: guardado
+                      ? colores.primarioFuerte
+                      : colores.sobrePrimario,
+                  }}
                 >
                   {consultandoGuardado
                     ? "Comprobando..."
@@ -528,7 +646,7 @@ export default function DetalleEventoScreen() {
                       : guardado
                         ? "Evento guardado"
                         : "Guardar evento"}
-                </Text>
+                </Texto>
               </Pressable>
             </View>
           </ScrollView>
@@ -538,15 +656,51 @@ export default function DetalleEventoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
+interface FilaInformacionProps {
+  icono: NombreIcono;
+  etiqueta: string;
+  children: ReactNode;
+}
 
-  contenido: {
-    paddingBottom: 32,
-  },
+function FilaInformacion({ icono, etiqueta, children }: FilaInformacionProps) {
+  const { colores } = useTema();
+
+  return (
+    <View style={estilos.filaInformacion}>
+      <View
+        style={[
+          estilos.circuloIcono,
+          { backgroundColor: colores.primarioSuave },
+        ]}
+      >
+        <Ionicons name={icono} size={20} color={colores.primarioFuerte} />
+      </View>
+
+      <View style={estilos.detalleInformacion}>
+        <Texto style={{ fontSize: 16, fontWeight: "700" }}>{etiqueta}</Texto>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function Divisor() {
+  const { colores } = useTema();
+
+  return (
+    <View
+      style={{
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: colores.borde,
+      }}
+    />
+  );
+}
+
+const estilos = StyleSheet.create({
+  safeArea: { flex: 1 },
+
+  contenido: { paddingBottom: 32 },
 
   centro: {
     flex: 1,
@@ -554,19 +708,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     gap: 12,
-    backgroundColor: "#F8FAFC",
   },
 
-  textoCentro: {
-    fontSize: 16,
-    color: "#64748B",
-    textAlign: "center",
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  contenedorImagen: {
-    height: 180,
-    backgroundColor: "#E8EEF4",
-  },
+  contenedorImagen: { height: 240 },
 
   imagen: {
     width: "100%",
@@ -577,25 +729,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#E8EEF4",
-  },
-
-  textoPlaceholder: {
-    fontSize: 14,
-    color: "#64748B",
+    gap: 8,
   },
 
   informacion: {
-    padding: 20,
-    gap: 20,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    gap: 12,
   },
 
-  titulo: {
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 31,
-    color: "#17202A",
+  filaEtiquetas: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  etiqueta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
   },
 
   aviso: {
@@ -603,110 +758,59 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
   },
 
-  textoAviso: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  descripcionContenedor: {
-    gap: 8,
-  },
-
-  descripcion: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: "#334155",
+  separador: {
+    height: 1,
+    marginVertical: 12,
   },
 
   leerMas: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#075985",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
   },
 
-  tarjetaDatos: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    gap: 16,
-  },
-
-  filaDato: {
+  filaInformacion: {
     flexDirection: "row",
     alignItems: "flex-start",
+    paddingVertical: 10,
     gap: 14,
   },
 
-  icono: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#E0F2FE",
+  circuloIcono: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  textosDato: {
+  detalleInformacion: {
     flex: 1,
     gap: 4,
   },
 
-  etiqueta: {
-    fontSize: 14,
-    color: "#64748B",
-  },
-
   valor: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#17202A",
-  },
-
-  detalle: {
-    fontSize: 14,
-    color: "#64748B",
-  },
-
-  divisor: {
-    height: 1,
-    backgroundColor: "#E2E8F0",
+    fontSize: 15,
+    lineHeight: 23,
   },
 
   botonGuardar: {
     minHeight: 56,
-    backgroundColor: "#075985",
-    borderRadius: 14,
+    borderRadius: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     paddingHorizontal: 20,
     paddingVertical: 14,
-  },
-
-  botonGuardado: {
-    backgroundColor: "#E0F2FE",
-    borderWidth: 1,
-    borderColor: "#075985",
+    marginTop: 16,
   },
 
   botonDeshabilitado: {
     opacity: 0.6,
-  },
-
-  textoBotonGuardar: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  textoBotonGuardado: {
-    color: "#075985",
   },
 });

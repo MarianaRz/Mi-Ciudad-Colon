@@ -1,3 +1,4 @@
+import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
 import {
   Stack,
@@ -5,20 +6,21 @@ import {
   useLocalSearchParams,
   useRouter,
 } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import { obtenerCategoriasApi } from "../../api/categorias";
 import { obtenerLugarPorIdApi } from "../../api/lugares";
 import ReproductorAudioguia from "../../components/ReproductorAudioguia";
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import {
   esFavorito,
@@ -27,11 +29,12 @@ import {
   sincronizarFavoritos,
 } from "../../servicios/favoritos";
 import { confirmarAccion } from "../../servicios/haptica";
+import { useTema } from "../../tema/TemaContext";
+import { fuentes } from "../../tema/tipografia";
 import type { Categoria } from "../../tipos/categoria";
 import type { Lugar } from "../../tipos/lugar";
+import { obtenerInfoCategoria } from "../../utils/categorias";
 import { obtenerEstadoHorario } from "../../utils/horarios";
-
-const AZUL = "#075985";
 
 const nombresDias = [
   "Domingo",
@@ -43,9 +46,12 @@ const nombresDias = [
   "Sábado",
 ];
 
+type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
+
 export default function DetalleLugarScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { colores } = useTema();
 
   const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
@@ -204,24 +210,61 @@ export default function DetalleLugarScreen() {
     }
   }
 
+  const opcionesHeader = (
+    <Stack.Screen
+      options={{
+        title: "Detalle del lugar",
+        headerStyle: { backgroundColor: colores.superficie },
+        headerTintColor: colores.texto,
+        headerTitleStyle: { fontFamily: fuentes.negrita, fontSize: 18 },
+        headerShadowVisible: false,
+      }}
+    />
+  );
+
   if (cargando) {
     return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color={AZUL} />
-        <Text style={styles.textoSecundario}>Cargando lugar...</Text>
-      </View>
+      <>
+        {opcionesHeader}
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <ActivityIndicator size="large" color={colores.primarioFuerte} />
+          <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
+            Cargando lugar...
+          </Texto>
+        </View>
+      </>
     );
   }
 
   if (error || !lugar) {
     return (
-      <View style={styles.centro}>
-        <Text>{error ?? "No se encontró el lugar."}</Text>
-      </View>
+      <>
+        {opcionesHeader}
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.errorSuave },
+            ]}
+          >
+            <Ionicons name="alert-circle" size={32} color={colores.error} />
+          </View>
+          <Texto
+            style={{
+              fontSize: 16,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            {error ?? "No se encontró el lugar."}
+          </Texto>
+        </View>
+      </>
     );
   }
 
   const estadoHorario = obtenerEstadoHorario(lugar.horarios);
+  const infoCategoria = obtenerInfoCategoria(lugar.categoriaId);
 
   const textoPrecio =
     lugar.precioEntrada === 0
@@ -235,48 +278,54 @@ export default function DetalleLugarScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: "Detalle del lugar",
-          headerStyle: { backgroundColor: AZUL },
-          headerTintColor: "#FFFFFF",
-          headerTitleStyle: { fontWeight: "700" },
-          headerShadowVisible: false,
-        }}
-      />
+      {opcionesHeader}
 
-      <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+      <SafeAreaView
+        style={[estilos.safeArea, { backgroundColor: colores.superficie }]}
+        edges={["bottom"]}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contenido}
+          contentContainerStyle={estilos.contenido}
         >
           {/* Imagen protagonista */}
-          <View style={styles.contenedorImagen}>
+          <View
+            style={[
+              estilos.contenedorImagen,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
             {lugar.imagenes.length > 0 ? (
               <Image
                 source={{ uri: lugar.imagenes[0] }}
-                style={styles.imagen}
+                style={estilos.imagen}
                 contentFit="cover"
                 transition={200}
                 alt={`Imagen de ${lugar.nombre}`}
               />
             ) : (
-              <View style={styles.sinImagen}>
-                <Text style={styles.textoSecundario}>
+              <View style={estilos.sinImagen}>
+                <Ionicons
+                  name="image-outline"
+                  size={40}
+                  color={colores.primarioFuerte}
+                />
+                <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
                   Sin imagen disponible
-                </Text>
+                </Texto>
               </View>
             )}
 
-            {/* Corazón flotante */}
+            {/* Botón de favorito */}
             <Pressable
               style={[
-                styles.botonCorazon,
-                botonDeshabilitado && styles.botonDeshabilitado,
+                estilos.botonCorazon,
+                { backgroundColor: colores.superficie },
+                botonDeshabilitado && estilos.botonDeshabilitado,
               ]}
               onPress={() => void alternarFavorito()}
               disabled={botonDeshabilitado}
-              accessibilityRole="button"
+              role="button"
               accessibilityLabel={
                 favorito
                   ? `Quitar ${lugar.nombre} de favoritos`
@@ -288,116 +337,170 @@ export default function DetalleLugarScreen() {
               }}
             >
               {botonDeshabilitado ? (
-                <ActivityIndicator size="small" color={AZUL} />
+                <ActivityIndicator
+                  size="small"
+                  color={colores.primarioFuerte}
+                />
               ) : (
-                <Text
-                  style={[styles.corazon, favorito && styles.corazonActivo]}
-                >
-                  {favorito ? "♥" : "♡"}
-                </Text>
+                <Ionicons
+                  name={favorito ? "heart" : "heart-outline"}
+                  size={26}
+                  color={favorito ? colores.error : colores.texto}
+                />
               )}
             </Pressable>
           </View>
 
           {/* Contenido principal */}
-          <View style={styles.cuerpo}>
-            <Text style={styles.titulo}>{lugar.nombre}</Text>
+          <View style={estilos.cuerpo}>
+            <Texto style={{ fontSize: 28, lineHeight: 34, fontWeight: "700" }}>
+              {lugar.nombre}
+            </Texto>
 
-            <Text style={styles.categoria}>
-              {categoria?.nombre ?? "Categoría no disponible"}
-            </Text>
+            <View style={estilos.filaEtiquetas}>
+              <View
+                style={[
+                  estilos.etiqueta,
+                  { backgroundColor: `${infoCategoria.color}20` },
+                ]}
+              >
+                <Ionicons
+                  name={infoCategoria.icono}
+                  size={16}
+                  color={infoCategoria.color}
+                />
+                <Texto style={{ fontSize: 13, fontWeight: "600" }}>
+                  {categoria?.nombre ?? "Categoría no disponible"}
+                </Texto>
+              </View>
 
-            <Text
-              style={[
-                styles.estadoHorario,
-                estadoHorario.abierto ? styles.abierto : styles.cerrado,
-              ]}
+              <View
+                style={[
+                  estilos.etiqueta,
+                  {
+                    backgroundColor: estadoHorario.abierto
+                      ? colores.exitoSuave
+                      : colores.errorSuave,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    estadoHorario.abierto ? "checkmark-circle" : "close-circle"
+                  }
+                  size={16}
+                  color={estadoHorario.abierto ? colores.exito : colores.error}
+                />
+                <Texto
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: estadoHorario.abierto
+                      ? colores.exito
+                      : colores.error,
+                  }}
+                >
+                  {estadoHorario.texto}
+                </Texto>
+              </View>
+            </View>
+
+            <View
+              style={[estilos.separador, { backgroundColor: colores.borde }]}
+            />
+
+            <Texto style={{ fontSize: 20, fontWeight: "700" }}>
+              Sobre este lugar
+            </Texto>
+            <Texto
+              style={{
+                fontSize: 16,
+                lineHeight: 25,
+                color: colores.textoSecundario,
+              }}
             >
-              {estadoHorario.texto}
-            </Text>
+              {lugar.descripcion}
+            </Texto>
 
-            <View style={styles.separador} />
+            <View
+              style={[estilos.separador, { backgroundColor: colores.borde }]}
+            />
 
-            <Text style={styles.tituloSeccion}>Sobre este lugar</Text>
-            <Text style={styles.descripcion}>{lugar.descripcion}</Text>
+            <Texto style={{ fontSize: 20, fontWeight: "700" }}>
+              Información para tu visita
+            </Texto>
 
-            <View style={styles.separador} />
+            <FilaInformacion icono="location" etiqueta="Ubicación">
+              <Texto style={estilos.valor}>{lugar.direccion}</Texto>
+            </FilaInformacion>
 
-            <Text style={styles.tituloSeccion}>Información para tu visita</Text>
+            <Divisor />
 
-            <View style={styles.filaInformacion}>
-              <Text style={styles.icono}>📍</Text>
-              <View style={styles.detalleInformacion}>
-                <Text style={styles.etiqueta}>Ubicación</Text>
-                <Text style={styles.valor}>{lugar.direccion}</Text>
-              </View>
-            </View>
+            <FilaInformacion icono="time" etiqueta="Horarios de visita">
+              {lugar.horarios.length > 0 ? (
+                lugar.horarios.map((horario) => (
+                  <Texto
+                    key={`${horario.dia}-${horario.abre}-${horario.cierra}`}
+                    style={[estilos.valor, { color: colores.textoSecundario }]}
+                  >
+                    {nombresDias[horario.dia]} · {horario.abre} a{" "}
+                    {horario.cierra}
+                  </Texto>
+                ))
+              ) : (
+                <Texto
+                  style={[estilos.valor, { color: colores.textoSecundario }]}
+                >
+                  Horario no informado
+                </Texto>
+              )}
+            </FilaInformacion>
 
-            <View style={styles.separadorSuave} />
+            <Divisor />
 
-            <View style={styles.filaInformacion}>
-              <Text style={styles.icono}>🕒</Text>
-              <View style={styles.detalleInformacion}>
-                <Text style={styles.etiqueta}>Horarios de visita</Text>
+            <FilaInformacion icono="ticket" etiqueta="Entrada">
+              <Texto
+                style={[estilos.valor, { color: colores.textoSecundario }]}
+              >
+                {textoPrecio}
+              </Texto>
+            </FilaInformacion>
 
-                {lugar.horarios.length > 0 ? (
-                  lugar.horarios.map((horario) => (
-                    <Text
-                      key={`${horario.dia}-${horario.abre}-${horario.cierra}`}
-                      style={styles.valor}
-                    >
-                      {nombresDias[horario.dia]} · {horario.abre} a{" "}
-                      {horario.cierra}
-                    </Text>
-                  ))
-                ) : (
-                  <Text style={styles.valor}>Horario no informado</Text>
-                )}
-              </View>
-            </View>
+            <Divisor />
 
-            <View style={styles.separadorSuave} />
-
-            <View style={styles.filaInformacion}>
-              <Text style={styles.icono}>🎟️</Text>
-              <View style={styles.detalleInformacion}>
-                <Text style={styles.etiqueta}>Entrada</Text>
-                <Text style={styles.valor}>{textoPrecio}</Text>
-              </View>
-            </View>
-
-            <View style={styles.separadorSuave} />
-
-            <View style={styles.filaInformacion}>
-              <Text style={styles.icono}>♿</Text>
-              <View style={styles.detalleInformacion}>
-                <Text style={styles.etiqueta}>Accesibilidad</Text>
-                <Text style={styles.valor}>
-                  {lugar.accesible
-                    ? "Accesible para silla de ruedas"
-                    : "No indicado como accesible para silla de ruedas"}
-                </Text>
-              </View>
-            </View>
+            <FilaInformacion icono="accessibility" etiqueta="Accesibilidad">
+              <Texto
+                style={[estilos.valor, { color: colores.textoSecundario }]}
+              >
+                {lugar.accesible
+                  ? "Accesible para silla de ruedas"
+                  : "No indicado como accesible para silla de ruedas"}
+              </Texto>
+            </FilaInformacion>
 
             {lugar.telefono && (
               <>
-                <View style={styles.separadorSuave} />
+                <Divisor />
 
-                <View style={styles.filaInformacion}>
-                  <Text style={styles.icono}>📞</Text>
-                  <View style={styles.detalleInformacion}>
-                    <Text style={styles.etiqueta}>Teléfono</Text>
-                    <Text style={styles.valor}>{lugar.telefono}</Text>
-                  </View>
-                </View>
+                <FilaInformacion icono="call" etiqueta="Teléfono">
+                  <Texto
+                    style={[estilos.valor, { color: colores.textoSecundario }]}
+                  >
+                    {lugar.telefono}
+                  </Texto>
+                </FilaInformacion>
               </>
             )}
 
             {/* Audioguía */}
             {lugar.audioguia && (
               <>
-                <View style={styles.separador} />
+                <View
+                  style={[
+                    estilos.separador,
+                    { backgroundColor: colores.borde },
+                  ]}
+                />
 
                 <ReproductorAudioguia
                   key={lugar.id}
@@ -423,26 +526,67 @@ export default function DetalleLugarScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  contenido: {
-    paddingBottom: 36,
-  },
+interface FilaInformacionProps {
+  icono: NombreIcono;
+  etiqueta: string;
+  children: ReactNode;
+}
+
+function FilaInformacion({ icono, etiqueta, children }: FilaInformacionProps) {
+  const { colores } = useTema();
+
+  return (
+    <View style={estilos.filaInformacion}>
+      <View
+        style={[
+          estilos.circuloIcono,
+          { backgroundColor: colores.primarioSuave },
+        ]}
+      >
+        <Ionicons name={icono} size={20} color={colores.primarioFuerte} />
+      </View>
+
+      <View style={estilos.detalleInformacion}>
+        <Texto style={{ fontSize: 16, fontWeight: "700" }}>{etiqueta}</Texto>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function Divisor() {
+  const { colores } = useTema();
+
+  return (
+    <View
+      style={{
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: colores.borde,
+      }}
+    />
+  );
+}
+
+const estilos = StyleSheet.create({
+  safeArea: { flex: 1 },
+  contenido: { paddingBottom: 36 },
   centro: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
     gap: 12,
-    backgroundColor: "#F8FAFC",
+  },
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   contenedorImagen: {
     width: "100%",
     height: 280,
-    backgroundColor: "#E2E8F0",
   },
   imagen: {
     width: "100%",
@@ -452,6 +596,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
   },
   botonCorazon: {
     position: "absolute",
@@ -460,90 +605,56 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-  corazon: {
-    fontSize: 30,
-    color: "#17202A",
-  },
-  corazonActivo: {
-    color: "#B42318",
-  },
+  botonDeshabilitado: { opacity: 0.6 },
   cuerpo: {
     paddingHorizontal: 22,
     paddingTop: 24,
     gap: 12,
   },
-  titulo: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#17202A",
+  filaEtiquetas: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  categoria: {
-    fontSize: 15,
-    color: "#64748B",
-  },
-  estadoHorario: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  abierto: {
-    color: "#167A3E",
-  },
-  cerrado: {
-    color: "#B42318",
+  etiqueta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
   },
   separador: {
     height: 1,
-    backgroundColor: "#E2E8F0",
     marginVertical: 12,
-  },
-  separadorSuave: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  tituloSeccion: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  descripcion: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: "#475569",
   },
   filaInformacion: {
     flexDirection: "row",
     alignItems: "flex-start",
     paddingVertical: 10,
-    gap: 16,
+    gap: 14,
   },
-  icono: {
-    fontSize: 23,
-    width: 30,
-    textAlign: "center",
+  circuloIcono: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   detalleInformacion: {
     flex: 1,
-    gap: 5,
-  },
-  etiqueta: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#17202A",
+    gap: 4,
   },
   valor: {
     fontSize: 15,
     lineHeight: 23,
-    color: "#64748B",
-  },
-  textoSecundario: {
-    fontSize: 15,
-    color: "#64748B",
   },
 });
