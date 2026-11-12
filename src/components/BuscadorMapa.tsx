@@ -2,16 +2,13 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-    Keyboard,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from "react-native";
+
+import { useTema } from "../tema/TemaContext";
+import { fuentes } from "../tema/tipografia";
 import { Lugar } from "../tipos/lugar";
 import { obtenerInfoCategoria } from "../utils/categorias";
+import Texto from "./ui/Texto";
 
 interface BuscadorMapaProps {
   lugares: Lugar[];
@@ -19,18 +16,27 @@ interface BuscadorMapaProps {
   onCambiarEstadoBusqueda: (estaBuscando: boolean) => void;
 }
 
+const SOMBRA = {
+  shadowColor: "#000",
+  shadowOpacity: 0.14,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 6,
+} as const;
+
 export function BuscadorMapa({
   lugares,
   onSeleccionarLugar,
   onCambiarEstadoBusqueda,
 }: BuscadorMapaProps) {
   const router = useRouter();
+  const { colores } = useTema();
   const [busqueda, setBusqueda] = useState("");
 
   const textoLimpio = busqueda.trim().toLowerCase();
 
   const lugaresFiltrados = lugares.filter((lugar) =>
-    lugar.nombre.toLowerCase().includes(textoLimpio)
+    lugar.nombre.toLowerCase().includes(textoLimpio),
   );
 
   const manejarCambioTexto = (texto: string) => {
@@ -46,66 +52,140 @@ export function BuscadorMapa({
   };
 
   return (
-    <View style={styles.contenedor}>
-      {/* Fila principal: Input + Botón Todos */}
-      <View style={styles.filaSuperior}>
-        <View style={styles.cajaInput}>
-          <Ionicons name="search-outline" size={18} color="#64748B" />
+    <View style={estilos.contenedor}>
+      {/* Fila principal: buscador + botón "Ver todas" */}
+      <View style={estilos.filaSuperior}>
+        <View
+          style={[
+            estilos.cajaInput,
+            SOMBRA,
+            { backgroundColor: colores.superficie },
+          ]}
+        >
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={colores.textoSecundario}
+          />
           <TextInput
-            style={styles.input}
-            placeholder="Buscar lugares en Colón..."
-            placeholderTextColor="#64748B"
+            style={[estilos.input, { color: colores.texto }]}
+            placeholder="Buscar lugares"
+            placeholderTextColor={colores.textoSecundario}
+            accessibilityLabel="Buscar lugares"
             value={busqueda}
             onChangeText={manejarCambioTexto}
             onFocus={() => onCambiarEstadoBusqueda(true)}
           />
           {busqueda.length > 0 && (
-            <TouchableOpacity onPress={limpiarBusqueda}>
-              <Ionicons name="close-circle" size={18} color="#94A3B8" />
-            </TouchableOpacity>
+            <Pressable
+              onPress={limpiarBusqueda}
+              hitSlop={12}
+              role="button"
+              accessibilityLabel="Borrar búsqueda"
+            >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colores.textoSecundario}
+              />
+            </Pressable>
           )}
         </View>
 
-        <TouchableOpacity
-          style={styles.botonTodos}
+        <Pressable
+          style={[
+            estilos.botonTodas,
+            SOMBRA,
+            { backgroundColor: colores.primario },
+          ]}
           onPress={() => router.push("/lugares" as any)}
+          role="button"
+          accessibilityLabel="Ver todos los lugares"
         >
-          <Text style={styles.textoTodos}>Todos</Text>
-        </TouchableOpacity>
+          <Texto
+            style={{
+              color: colores.sobrePrimario,
+              fontSize: 14,
+              fontWeight: "700",
+            }}
+          >
+            Ver todas
+          </Texto>
+        </Pressable>
       </View>
 
-      {/* Lista desplegable con coincidencias */}
+      {/* Cartelito con las coincidencias */}
       {textoLimpio.length > 0 && (
-        <View style={styles.listaSugerencias}>
+        <View
+          style={[
+            estilos.listaSugerencias,
+            SOMBRA,
+            { backgroundColor: colores.superficie },
+          ]}
+        >
           {lugaresFiltrados.length === 0 ? (
-            <Text style={styles.textoVacio}>
+            <Texto
+              style={{
+                padding: 16,
+                color: colores.textoSecundario,
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
               No se encontraron lugares con "{busqueda}"
-            </Text>
+            </Texto>
           ) : (
-            lugaresFiltrados.slice(0, 5).map((lugar) => {
+            lugaresFiltrados.slice(0, 5).map((lugar, indice) => {
               const { icono, color } = obtenerInfoCategoria(lugar.categoriaId);
               return (
-                <TouchableOpacity
+                <Pressable
                   key={lugar.id}
-                  style={styles.itemSugerencia}
+                  style={[
+                    estilos.itemSugerencia,
+                    indice > 0 && {
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colores.borde,
+                    },
+                  ]}
                   onPress={() => {
                     setBusqueda("");
                     onCambiarEstadoBusqueda(false);
                     Keyboard.dismiss();
                     onSeleccionarLugar(lugar);
                   }}
+                  role="button"
+                  accessibilityLabel={`Ir a ${lugar.nombre}`}
                 >
-                  <Ionicons name={icono} size={18} color={color} />
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.nombreLugar} numberOfLines={1}>
-                      {lugar.nombre}
-                    </Text>
-                    <Text style={styles.descLugar} numberOfLines={1}>
-                      {lugar.descripcionCorta}
-                    </Text>
+                  <View
+                    style={[
+                      estilos.circuloIcono,
+                      { backgroundColor: `${color}20` },
+                    ]}
+                  >
+                    <Ionicons name={icono} size={18} color={color} />
                   </View>
-                  <Ionicons name="navigate-outline" size={16} color="#075985" />
-                </TouchableOpacity>
+
+                  <View style={{ flex: 1 }}>
+                    <Texto
+                      numberOfLines={1}
+                      style={{ fontSize: 15, fontWeight: "700" }}
+                    >
+                      {lugar.nombre}
+                    </Texto>
+                    <Texto
+                      numberOfLines={1}
+                      style={{ fontSize: 13, color: colores.textoSecundario }}
+                    >
+                      {lugar.descripcionCorta}
+                    </Texto>
+                  </View>
+
+                  <Ionicons
+                    name="navigate-outline"
+                    size={20}
+                    color={colores.primarioFuerte}
+                  />
+                </Pressable>
               );
             })
           )}
@@ -115,10 +195,10 @@ export function BuscadorMapa({
   );
 }
 
-const styles = StyleSheet.create({
+const estilos = StyleSheet.create({
   contenedor: {
     position: "absolute",
-    top: 50,
+    top: 12,
     left: 16,
     right: 16,
     zIndex: 20,
@@ -126,72 +206,49 @@ const styles = StyleSheet.create({
   filaSuperior: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   cajaInput: {
     flex: 1,
+    height: 52,
+    borderRadius: 26,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
+    gap: 10,
   },
   input: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#0F172A",
+    fontFamily: fuentes.regular,
+    fontSize: 15,
+    paddingVertical: 0,
   },
-  botonTodos: {
-    backgroundColor: "#075985",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderRadius: 14,
-    elevation: 4,
-  },
-  textoTodos: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 13,
+  botonTodas: {
+    height: 52,
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   listaSugerencias: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    marginTop: 8,
-    paddingVertical: 4,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    marginTop: 10,
+    borderRadius: 24,
+    paddingVertical: 6,
+    overflow: "hidden",
   },
   itemSugerencia: {
+    minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
+    gap: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#E2E8F0",
   },
-  nombreLugar: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
-  descLugar: {
-    fontSize: 12,
-    color: "#64748B",
-  },
-  textoVacio: {
-    padding: 14,
-    color: "#64748B",
-    fontSize: 13,
-    textAlign: "center",
+  circuloIcono: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,10 +1,18 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { SesionProvider } from "../contextos/SesionContext";
 import { queryClient } from "../config/queryClient";
+import { SesionProvider } from "../contextos/SesionContext";
+
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  useFonts,
+} from "@expo-google-fonts/plus-jakarta-sans";
 
 function NavegacionNotificaciones() {
   useEffect(() => {
@@ -55,6 +63,15 @@ function NavegacionNotificaciones() {
 }
 
 export default function RootLayout() {
+  const [fuentesListas] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+
+  if (!fuentesListas) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       <SesionProvider>
