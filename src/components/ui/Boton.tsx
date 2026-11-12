@@ -1,14 +1,14 @@
 import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    type PressableProps,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  type PressableProps,
 } from "react-native";
 
 import { useTema } from "../../tema/TemaContext";
 import Texto from "./Texto";
 
-type Variante = "primario" | "secundario" | "texto";
+type Variante = "primario" | "secundario" | "texto" | "peligro";
 
 interface BotonProps extends Omit<PressableProps, "children" | "style"> {
   titulo: string;
@@ -32,10 +32,16 @@ export default function Boton({
       ? colores.primario
       : variante === "secundario"
         ? colores.primarioSuave
-        : "transparent";
+        : variante === "peligro"
+          ? colores.errorSuave
+          : "transparent";
 
   const colorTexto =
-    variante === "primario" ? colores.sobrePrimario : colores.primarioFuerte;
+    variante === "primario"
+      ? colores.sobrePrimario
+      : variante === "peligro"
+        ? colores.error
+        : colores.primarioFuerte;
 
   return (
     <Pressable
