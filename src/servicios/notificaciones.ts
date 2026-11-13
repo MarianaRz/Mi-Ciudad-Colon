@@ -63,6 +63,12 @@ export async function solicitarPermisoNotificaciones(): Promise<boolean> {
   return respuesta.granted;
 }
 
+export async function tienePermisoNotificaciones(): Promise<boolean> {
+  const permisos = await Notifications.getPermissionsAsync();
+
+  return permisos.granted;
+}
+
 // --------------------------------------------------
 // Consultar notificaciones pendientes
 // --------------------------------------------------

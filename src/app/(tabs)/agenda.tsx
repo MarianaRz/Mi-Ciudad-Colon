@@ -1,15 +1,17 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useConectividad } from "../../hooks/useConectividad";
+import { sincronizarEventosGuardados } from "../../servicios/eventosGuardados";
 
 import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
 
+import { obtenerEventosApi } from "../../api/eventos";
+import { obtenerLugaresApi } from "../../api/lugares";
 import { TarjetaEvento } from "../../components/TarjetaEvento";
 import Boton from "../../components/ui/Boton";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
-import { obtenerEventos } from "../../servicios/eventos";
-import { obtenerLugares } from "../../servicios/lugares";
 import { comprobarCambiosAgenda } from "../../servicios/seguimientoAgenda";
 import { useTema } from "../../tema/TemaContext";
 import { armarSecciones, SeccionAgenda } from "../../utils/agenda";
@@ -21,13 +23,28 @@ type EstadoAgenda =
 
 export default function AgendaScreen() {
   const { colores } = useTema();
-  const { sesion, cargando: cargandoSesion } = useSesion();
+  const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [estado, setEstado] = useState<EstadoAgenda>({
     fase: "cargando",
   });
 
   const [intento, setIntento] = useState(0);
+
+  const conectividad = useConectividad();
+
+  useEffect(() => {
+    if (
+      conectividad !== "conectado" ||
+      cargandoSesion ||
+      !sesion ||
+      bloqueada
+    ) {
+      return;
+    }
+
+    void sincronizarEventosGuardados(sesion.email).catch(() => {});
+  }, [conectividad, cargandoSesion, sesion?.email, bloqueada]);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,8 +55,8 @@ export default function AgendaScreen() {
 
         try {
           const [respuestaEventos, respuestaLugares] = await Promise.all([
-            obtenerEventos(),
-            obtenerLugares(),
+            obtenerEventosApi(),
+            obtenerLugaresApi(),
           ]);
 
           if (!activo) {
@@ -59,6 +76,12 @@ export default function AgendaScreen() {
           // Los eventos son públicos, pero el seguimiento
           // corresponde a los eventos guardados por cada usuario.
           if (!cargandoSesion && sesion) {
+            if (!bloqueada) {
+              try {
+                await sincronizarEventosGuardados(sesion.email);
+              } catch {}
+            }
+
             try {
               await comprobarCambiosAgenda(
                 sesion.email,
@@ -90,7 +113,7 @@ export default function AgendaScreen() {
       return () => {
         activo = false;
       };
-    }, [intento, sesion?.email, cargandoSesion]),
+    }, [intento, sesion?.email, cargandoSesion, bloqueada]),
   );
 
   if (estado.fase === "cargando") {
@@ -167,6 +190,45 @@ export default function AgendaScreen() {
       style={{ backgroundColor: colores.fondo }}
       contentContainerStyle={estilos.lista}
       stickySectionHeadersEnabled
+      ListHeaderComponent={
+        conectividad === "sin-conexion" ? (
+          <View
+            style={[
+              estilos.tarjetaConexion,
+              { backgroundColor: colores.advertenciaSuave },
+            ]}
+          >
+            <View
+              style={[
+                estilos.circuloConexion,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <Ionicons
+                name="cloud-offline"
+                size={22}
+                color={colores.advertencia}
+              />
+            </View>
+
+            <View style={{ flex: 1, gap: 2 }}>
+              <Texto
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: colores.advertencia,
+                }}
+              >
+                Sin conexión
+              </Texto>
+
+              <Texto style={{ fontSize: 13, color: colores.textoSecundario }}>
+                Te mostramos la última agenda guardada en este teléfono.
+              </Texto>
+            </View>
+          </View>
+        ) : null
+      }
       renderSectionHeader={({ section }) => (
         <View
           style={[estilos.encabezado, { backgroundColor: colores.fondo }]}
@@ -269,6 +331,23 @@ const estilos = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  tarjetaConexion: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+
+  circuloConexion: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },

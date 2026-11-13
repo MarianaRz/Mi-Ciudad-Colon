@@ -27,7 +27,7 @@ const SOMBRA = {
   elevation: 2,
 } as const;
 
-type IconoAcceso = "heart-outline" | "footsteps-outline";
+type IconoAcceso = "heart-outline" | "calendar-outline" | "footsteps-outline";
 type IconoDato = "mail-outline" | "lock-closed-outline";
 type IconoBeneficio = "heart-outline" | "footsteps-outline" | "cloud-outline";
 
@@ -347,6 +347,13 @@ export default function PerfilScreen() {
           titulo="Mis favoritos"
           subtitulo="Tus lugares preferidos de Colón"
           alPresionar={() => router.push("/favoritos")}
+        />
+
+        <AccesoFila
+          icono="calendar-outline"
+          titulo="Mis eventos"
+          subtitulo="Los eventos a los que querés ir"
+          alPresionar={() => router.push("/eventos-guardados")}
         />
 
         <AccesoFila

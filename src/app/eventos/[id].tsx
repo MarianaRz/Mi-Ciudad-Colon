@@ -14,11 +14,13 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import Boton from "../../components/ui/Boton";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 
-import { obtenerEventoPorId } from "../../servicios/eventos";
+import { obtenerEventoPorIdApi } from "../../api/eventos";
 
+import { obtenerLugarPorIdApi } from "../../api/lugares";
 import {
   actualizarNotificacionGuardada,
   actualizarSeguimientoEvento,
@@ -26,8 +28,8 @@ import {
   guardarEvento,
   obtenerNotificacionGuardada,
   quitarEventoGuardado,
+  sincronizarEventosGuardados,
 } from "../../servicios/eventosGuardados";
-import { obtenerLugarPorId } from "../../servicios/lugares";
 import {
   cancelarRecordatorio,
   cancelarRecordatoriosEvento,
@@ -35,6 +37,7 @@ import {
 } from "../../servicios/notificaciones";
 import { useTema } from "../../tema/TemaContext";
 import { fuentes } from "../../tema/tipografia";
+import { ErrorApi } from "../../tipos/api";
 import { Evento } from "../../tipos/evento";
 
 import { confirmarAccion } from "../../servicios/haptica";
@@ -46,7 +49,7 @@ import {
 
 type EstadoDetalle =
   | { fase: "cargando" }
-  | { fase: "error"; mensaje: string }
+  | { fase: "error"; mensaje: string; reintentable: boolean }
   | { fase: "listo"; evento: Evento; ubicacion: string };
 
 type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
@@ -74,7 +77,7 @@ export default function DetalleEventoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colores } = useTema();
 
-  const { sesion, cargando: cargandoSesion } = useSesion();
+  const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [estado, setEstado] = useState<EstadoDetalle>({
     fase: "cargando",
@@ -90,6 +93,8 @@ export default function DetalleEventoScreen() {
 
   const [guardando, setGuardando] = useState(false);
 
+  const [intento, setIntento] = useState(0);
+
   // Cargar los datos del evento
   useEffect(() => {
     let activo = true;
@@ -100,13 +105,13 @@ export default function DetalleEventoScreen() {
       setDescripcionExpandida(false);
 
       try {
-        const evento = await obtenerEventoPorId(id);
+        const evento = await obtenerEventoPorIdApi(id);
 
         let ubicacion = evento.direccionLibre ?? "Ubicación a confirmar";
 
         if (evento.lugarId !== null) {
           try {
-            const lugar = await obtenerLugarPorId(evento.lugarId);
+            const lugar = await obtenerLugarPorIdApi(evento.lugarId);
             ubicacion = lugar.nombre;
           } catch {
             ubicacion = "Lugar no disponible";
@@ -128,9 +133,14 @@ export default function DetalleEventoScreen() {
             ? error.message
             : "Ocurrió un error al cargar el evento.";
 
+        const reintentable = !(
+          error instanceof ErrorApi && error.codigo === "EVENTO_NO_ENCONTRADO"
+        );
+
         setEstado({
           fase: "error",
           mensaje,
+          reintentable,
         });
       }
     }
@@ -140,7 +150,7 @@ export default function DetalleEventoScreen() {
     return () => {
       activo = false;
     };
-  }, [id]);
+  }, [id, intento]);
 
   // Consultar si el evento está guardado en SQLite
   useEffect(() => {
@@ -154,7 +164,7 @@ export default function DetalleEventoScreen() {
         return;
       }
 
-      if (!sesion || !id) {
+      if (!sesion || bloqueada || !id) {
         if (activo) {
           setConsultandoGuardado(false);
         }
@@ -176,6 +186,20 @@ export default function DetalleEventoScreen() {
           setConsultandoGuardado(false);
         }
       }
+
+      if (!activo) {
+        return;
+      }
+
+      try {
+        await sincronizarEventosGuardados(sesion.email);
+
+        const existeActualizado = await estaEventoGuardado(sesion.email, id);
+
+        if (activo) {
+          setGuardado(existeActualizado);
+        }
+      } catch {}
     }
 
     consultarGuardado();
@@ -183,13 +207,19 @@ export default function DetalleEventoScreen() {
     return () => {
       activo = false;
     };
-  }, [id, sesion?.email, cargandoSesion]);
+  }, [id, sesion?.email, cargandoSesion, bloqueada]);
 
   const evento = estado.fase === "listo" ? estado.evento : null;
 
+  const sePuedeGuardar =
+    evento?.estado === "programado" || evento?.estado === "suspendido";
+
+  const botonGuardarDeshabilitado =
+    guardando || consultandoGuardado || (!guardado && !sePuedeGuardar);
+
   // Guardar o quitar un evento
   async function alternarGuardado() {
-    if (!evento || guardando || consultandoGuardado) {
+    if (!evento || botonGuardarDeshabilitado) {
       return;
     }
 
@@ -202,6 +232,21 @@ export default function DetalleEventoScreen() {
           {
             text: "Iniciar sesión",
             onPress: () => router.push("/login"),
+          },
+        ],
+      );
+      return;
+    }
+
+    if (bloqueada) {
+      Alert.alert(
+        "Sesión bloqueada",
+        "Desbloqueá tu sesión desde «Yo» para modificar tus eventos guardados.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Ir a Yo",
+            onPress: () => router.push("/(tabs)/perfil"),
           },
         ],
       );
@@ -283,6 +328,8 @@ export default function DetalleEventoScreen() {
     } finally {
       setGuardando(false);
     }
+
+    void sincronizarEventosGuardados(sesion.email).catch(() => {});
   }
 
   const mostrarImagen = evento?.imagenUrl != null && !imagenFallida;
@@ -341,6 +388,16 @@ export default function DetalleEventoScreen() {
           >
             {estado.mensaje}
           </Texto>
+
+          {estado.reintentable && (
+            <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+              <Boton
+                titulo="Reintentar"
+                onPress={() => setIntento((anterior) => anterior + 1)}
+                accessibilityLabel="Reintentar cargar el evento"
+              />
+            </View>
+          )}
         </View>
       )}
 
@@ -602,16 +659,20 @@ export default function DetalleEventoScreen() {
                         borderColor: colores.primarioFuerte,
                       }
                     : { backgroundColor: colores.primario },
-                  botonInactivo && estilos.botonDeshabilitado,
+                  botonGuardarDeshabilitado && estilos.botonDeshabilitado,
                 ]}
                 onPress={alternarGuardado}
-                disabled={botonInactivo}
+                disabled={botonGuardarDeshabilitado}
                 role="button"
                 accessibilityLabel={
-                  guardado ? "Quitar evento guardado" : "Guardar evento"
+                  guardado
+                    ? "Quitar evento guardado"
+                    : sePuedeGuardar
+                      ? "Guardar evento"
+                      : "Este evento no se puede guardar"
                 }
                 accessibilityState={{
-                  disabled: botonInactivo,
+                  disabled: botonGuardarDeshabilitado,
                   busy: botonInactivo,
                 }}
               >
@@ -645,7 +706,9 @@ export default function DetalleEventoScreen() {
                       ? "Guardando..."
                       : guardado
                         ? "Evento guardado"
-                        : "Guardar evento"}
+                        : sePuedeGuardar
+                          ? "Guardar evento"
+                          : "No se puede guardar"}
                 </Texto>
               </Pressable>
             </View>
