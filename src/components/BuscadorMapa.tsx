@@ -1,4 +1,3 @@
-// src/components/BuscadorMapa.tsx
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";

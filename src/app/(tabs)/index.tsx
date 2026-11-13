@@ -1,4 +1,3 @@
-// src/app/(tabs)/index.tsx
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -6,7 +5,7 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 
-import { obtenerLugaresApi } from "../../api/lugares"; // Asegúrate de que esta ruta coincida con tu import original
+import { obtenerLugaresApi } from "../../api/lugares";
 import { useUbicacion } from "../../hooks/useUbicacion";
 import { Lugar } from "../../tipos/lugar";
 import { obtenerInfoCategoria } from "../../utils/categorias";
@@ -14,6 +13,7 @@ import { calcularDistanciaMetros } from "../../utils/distancias";
 import { obtenerRutaPorCalles, ResultadoRuta } from "../../utils/rutas";
 
 import { BuscadorMapa } from "../../components/BuscadorMapa";
+import { FiltroCategorias } from "../../components/FiltroCategorias";
 import { ListaCercaTuyo } from "../../components/ListaCercaTuyo";
 import { TarjetaRuta } from "../../components/TarjetaRuta";
 
@@ -25,6 +25,7 @@ export default function MapaScreen() {
   const [buscando, setBuscando] = useState(false);
   const [lugarDestino, setLugarDestino] = useState<Lugar | null>(null);
   const [rutaActiva, setRutaActiva] = useState<ResultadoRuta | null>(null);
+  const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null);
 
   const { data: respuestaLugares, isLoading, error } = useQuery({
     queryKey: ["lugares"],
@@ -51,6 +52,12 @@ export default function MapaScreen() {
 
   const latCentro = ubicacionUsuario?.latitude ?? -32.2250;
   const lonCentro = ubicacionUsuario?.longitude ?? -58.1480;
+
+  // Filtrar lugares según la categoría
+  const lugaresVisibles =
+    respuestaLugares?.datos?.filter((lugar) =>
+      categoriaActiva ? lugar.categoriaId === categoriaActiva : true
+    ) || [];
 
   // Calcular distancias y ordenar los 3 más cercanos
   const lugaresConDistancia =
@@ -86,7 +93,7 @@ export default function MapaScreen() {
     if (resultado) {
       setRutaActiva(resultado);
       mapRef.current?.fitToCoordinates(resultado.puntos, {
-        edgePadding: { top: 130, right: 50, bottom: 160, left: 50 },
+        edgePadding: { top: 150, right: 50, bottom: 180, left: 50 },
         animated: true,
       });
     }
@@ -122,7 +129,7 @@ export default function MapaScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {respuestaLugares?.datos?.map((lugar) => {
+        {lugaresVisibles.map((lugar) => {
           if (!lugar.coordenadas) return null;
           const { icono, color } = obtenerInfoCategoria(lugar.categoriaId);
 
@@ -161,6 +168,14 @@ export default function MapaScreen() {
         onCambiarEstadoBusqueda={setBuscando}
       />
 
+      {/* 2B. FILTRO DE CATEGORÍAS */}
+      {!buscando && (
+        <FiltroCategorias
+          categoriaSeleccionada={categoriaActiva}
+          onSeleccionarCategoria={setCategoriaActiva}
+        />
+      )}
+
       {/* 3. TARJETA DE RUTA ACTIVA */}
       {lugarDestino && rutaActiva && (
         <TarjetaRuta
@@ -175,7 +190,7 @@ export default function MapaScreen() {
         <ListaCercaTuyo lugares={lugaresCercanos} />
       )}
 
-      {/* 5. BANNER DE ERROR GPS (Opcional) */}
+      {/* 5. BANNER DE ERROR GPS */}
       {errorUbicacion && (
         <View style={styles.bannerError}>
           <Text style={styles.textoErrorBanner}>{errorUbicacion}</Text>
@@ -201,7 +216,7 @@ const styles = StyleSheet.create({
   },
   bannerError: {
     position: "absolute",
-    top: 110,
+    top: 165,
     left: 16,
     right: 16,
     backgroundColor: "#FEE2E2",
