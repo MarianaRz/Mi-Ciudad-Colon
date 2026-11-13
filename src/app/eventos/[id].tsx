@@ -80,7 +80,7 @@ function formatearPrecio(precio: number | null): string {
 export default function DetalleEventoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { sesion, cargando: cargandoSesion } = useSesion();
+  const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [estado, setEstado] = useState<EstadoDetalle>({
     fase: "cargando",
@@ -167,7 +167,7 @@ export default function DetalleEventoScreen() {
         return;
       }
 
-      if (!sesion || !id) {
+      if (!sesion || bloqueada || !id) {
         if (activo) {
           setConsultandoGuardado(false);
         }
@@ -210,7 +210,7 @@ export default function DetalleEventoScreen() {
     return () => {
       activo = false;
     };
-  }, [id, sesion?.email, cargandoSesion]);
+  }, [id, sesion?.email, cargandoSesion, bloqueada]);
 
   const evento = estado.fase === "listo" ? estado.evento : null;
 
@@ -235,6 +235,21 @@ export default function DetalleEventoScreen() {
           {
             text: "Iniciar sesión",
             onPress: () => router.push("/login"),
+          },
+        ],
+      );
+      return;
+    }
+
+    if (bloqueada) {
+      Alert.alert(
+        "Sesión bloqueada",
+        "Desbloqueá tu sesión desde «Yo» para modificar tus eventos guardados.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Ir a Yo",
+            onPress: () => router.push("/(tabs)/perfil"),
           },
         ],
       );

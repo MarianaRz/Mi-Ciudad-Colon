@@ -25,7 +25,7 @@ type EstadoAgenda =
   | { fase: "listo"; secciones: SeccionAgenda[] };
 
 export default function AgendaScreen() {
-  const { sesion, cargando: cargandoSesion } = useSesion();
+  const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [estado, setEstado] = useState<EstadoAgenda>({
     fase: "cargando",
@@ -36,12 +36,17 @@ export default function AgendaScreen() {
   const conectividad = useConectividad();
 
   useEffect(() => {
-    if (conectividad !== "conectado" || cargandoSesion || !sesion) {
+    if (
+      conectividad !== "conectado" ||
+      cargandoSesion ||
+      !sesion ||
+      bloqueada
+    ) {
       return;
     }
 
     void sincronizarEventosGuardados(sesion.email).catch(() => {});
-  }, [conectividad, cargandoSesion, sesion?.email]);
+  }, [conectividad, cargandoSesion, sesion?.email, bloqueada]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,9 +78,11 @@ export default function AgendaScreen() {
           // Los eventos son públicos, pero el seguimiento
           // corresponde a los eventos guardados por cada usuario.
           if (!cargandoSesion && sesion) {
-            try {
-              await sincronizarEventosGuardados(sesion.email);
-            } catch {}
+            if (!bloqueada) {
+              try {
+                await sincronizarEventosGuardados(sesion.email);
+              } catch {}
+            }
 
             try {
               await comprobarCambiosAgenda(
@@ -108,7 +115,7 @@ export default function AgendaScreen() {
       return () => {
         activo = false;
       };
-    }, [intento, sesion?.email, cargandoSesion]),
+    }, [intento, sesion?.email, cargandoSesion, bloqueada]),
   );
 
   if (estado.fase === "cargando") {
