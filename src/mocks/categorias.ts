@@ -4,50 +4,50 @@ export const categoriasMock: Categoria[] = [
   {
     id: "cat-playas",
     nombre: "Playas",
-    icono: "water-outline",
-    color: "#1976D2",
+    icono: "sunny-outline",
+    color: "#FACC15", // Amarillo sol cálido
     orden: 1,
   },
   {
     id: "cat-termas",
     nombre: "Termas",
-    icono: "thermometer-outline",
-    color: "#D97706",
+    icono: "water-outline", // Cambiado a agua/ondas para las termas
+    color: "#38BDF8", // Celeste agua pastel
     orden: 2,
   },
   {
     id: "cat-museos",
     nombre: "Museos y patrimonio",
     icono: "business-outline",
-    color: "#8E5A4A",
+    color: "#A78BFA", // Violeta suave / patrimonio
     orden: 3,
   },
   {
     id: "cat-gastronomia",
     nombre: "Gastronomía",
     icono: "restaurant-outline",
-    color: "#B91C1C",
+    color: "#FB7185", // Rosa coral pastel (muy cálido para comida)
     orden: 4,
   },
   {
     id: "cat-artesanias",
     nombre: "Artesanías",
     icono: "color-palette-outline",
-    color: "#7E22CE",
+    color: "#E879F9", // Fucsia/Magenta pastel muy sutil
     orden: 5,
   },
   {
     id: "cat-naturaleza",
     nombre: "Naturaleza",
     icono: "leaf-outline",
-    color: "#15803D",
+    color: "#34D399", // Verde agua / menta suave (nada de flúor)
     orden: 6,
   },
   {
     id: "cat-alojamiento",
     nombre: "Alojamiento",
     icono: "bed-outline",
-    color: "#475569",
+    color: "#CBD5E1", // Gris perlado / plateado pastel muy legible
     orden: 7,
   },
 ];

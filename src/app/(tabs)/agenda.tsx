@@ -4,20 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useConectividad } from "../../hooks/useConectividad";
 import { sincronizarEventosGuardados } from "../../servicios/eventosGuardados";
 
-import {
-  ActivityIndicator,
-  Pressable,
-  SectionList,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
 
 import { obtenerEventosApi } from "../../api/eventos";
 import { obtenerLugaresApi } from "../../api/lugares";
 import { TarjetaEvento } from "../../components/TarjetaEvento";
+import Boton from "../../components/ui/Boton";
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import { comprobarCambiosAgenda } from "../../servicios/seguimientoAgenda";
+import { useTema } from "../../tema/TemaContext";
 import { armarSecciones, SeccionAgenda } from "../../utils/agenda";
 
 type EstadoAgenda =
@@ -26,6 +22,7 @@ type EstadoAgenda =
   | { fase: "listo"; secciones: SeccionAgenda[] };
 
 export default function AgendaScreen() {
+  const { colores } = useTema();
   const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [estado, setEstado] = useState<EstadoAgenda>({
@@ -121,29 +118,67 @@ export default function AgendaScreen() {
 
   if (estado.fase === "cargando") {
     return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color="#075985" />
+      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+        <ActivityIndicator size="large" color={colores.primarioFuerte} />
 
-        <Text style={styles.textoCentro}>Cargando agenda...</Text>
+        <Texto
+          style={{
+            fontSize: 15,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
+          Cargando agenda...
+        </Texto>
       </View>
     );
   }
 
   if (estado.fase === "error") {
     return (
-      <View style={styles.centro}>
-        <Text style={styles.tituloCentro}>No pudimos cargar la agenda</Text>
-
-        <Text style={styles.textoCentro}>{estado.mensaje}</Text>
-
-        <Pressable
-          style={styles.botonReintentar}
-          onPress={() => setIntento((anterior) => anterior + 1)}
-          accessibilityRole="button"
-          accessibilityLabel="Reintentar cargar la agenda"
+      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+        <View
+          style={[
+            estilos.circuloEstado,
+            { backgroundColor: colores.errorSuave },
+          ]}
         >
-          <Text style={styles.textoBotonReintentar}>Reintentar</Text>
-        </Pressable>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={32}
+            color={colores.error}
+          />
+        </View>
+
+        <Texto
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: colores.error,
+            textAlign: "center",
+          }}
+        >
+          No pudimos cargar la agenda
+        </Texto>
+
+        <Texto
+          style={{
+            fontSize: 15,
+            lineHeight: 22,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
+          {estado.mensaje}
+        </Texto>
+
+        <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+          <Boton
+            titulo="Reintentar"
+            onPress={() => setIntento((anterior) => anterior + 1)}
+            accessibilityLabel="Reintentar cargar la agenda"
+          />
+        </View>
       </View>
     );
   }
@@ -152,67 +187,136 @@ export default function AgendaScreen() {
     <SectionList
       sections={estado.secciones}
       keyExtractor={(item) => item.evento.id}
-      contentContainerStyle={styles.lista}
+      style={{ backgroundColor: colores.fondo }}
+      contentContainerStyle={estilos.lista}
       stickySectionHeadersEnabled
       ListHeaderComponent={
         conectividad === "sin-conexion" ? (
-          <View style={[styles.tarjetaConexion, styles.conexionInactiva]}>
-            <Ionicons name="cloud-offline-outline" size={23} color="#B45309" />
+          <View
+            style={[
+              estilos.tarjetaConexion,
+              { backgroundColor: colores.advertenciaSuave },
+            ]}
+          >
+            <View
+              style={[
+                estilos.circuloConexion,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <Ionicons
+                name="cloud-offline"
+                size={22}
+                color={colores.advertencia}
+              />
+            </View>
 
-            <View style={styles.informacionConexion}>
-              <Text
-                style={[styles.tituloConexion, styles.textoConexionInactiva]}
+            <View style={{ flex: 1, gap: 2 }}>
+              <Texto
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: colores.advertencia,
+                }}
               >
                 Sin conexión
-              </Text>
+              </Texto>
 
-              <Text style={styles.descripcionConexion}>
+              <Texto style={{ fontSize: 13, color: colores.textoSecundario }}>
                 Te mostramos la última agenda guardada en este teléfono.
-              </Text>
+              </Texto>
             </View>
           </View>
         ) : null
       }
       renderSectionHeader={({ section }) => (
-        <Text style={styles.encabezado} accessibilityRole="header">
-          {section.title}
-        </Text>
+        <View
+          style={[estilos.encabezado, { backgroundColor: colores.fondo }]}
+          accessibilityRole="header"
+        >
+          <View
+            style={[
+              estilos.iconoEncabezado,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="calendar"
+              size={16}
+              color={colores.primarioFuerte}
+            />
+          </View>
+
+          <Texto style={{ fontSize: 17, fontWeight: "700" }}>
+            {section.title}
+          </Texto>
+        </View>
       )}
       renderItem={({ item }) => (
         <TarjetaEvento evento={item.evento} ubicacion={item.ubicacion} />
       )}
-      SectionSeparatorComponent={() => <View style={styles.separador} />}
-      ItemSeparatorComponent={() => <View style={styles.separador} />}
+      SectionSeparatorComponent={() => <View style={estilos.separador} />}
+      ItemSeparatorComponent={() => <View style={estilos.separador} />}
       ListEmptyComponent={
-        <View style={styles.centro}>
-          <Text style={styles.tituloCentro}>No hay eventos próximos</Text>
+        <View style={estilos.centro}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={32}
+              color={colores.primarioFuerte}
+            />
+          </View>
 
-          <Text style={styles.textoCentro}>
+          <Texto
+            style={{ fontSize: 18, fontWeight: "700", textAlign: "center" }}
+          >
+            No hay eventos próximos
+          </Texto>
+
+          <Texto
+            style={{
+              fontSize: 15,
+              lineHeight: 22,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
             Volvé a mirar más adelante: se van sumando actividades.
-          </Text>
+          </Texto>
         </View>
       }
     />
   );
 }
 
-const styles = StyleSheet.create({
+const estilos = StyleSheet.create({
   lista: {
     flexGrow: 1,
     padding: 16,
-    backgroundColor: "#F8FAFC",
   },
 
   encabezado: {
-    paddingVertical: 8,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#17202A",
-    backgroundColor: "#F8FAFC",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+  },
+
+  iconoEncabezado: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   separador: {
-    height: 10,
+    height: 12,
   },
 
   centro: {
@@ -221,71 +325,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     gap: 12,
-    backgroundColor: "#F8FAFC",
   },
 
-  tituloCentro: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#17202A",
-    textAlign: "center",
-  },
-
-  textoCentro: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#5F6B76",
-    textAlign: "center",
-  },
-
-  botonReintentar: {
-    minHeight: 52,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: "#075985",
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  textoBotonReintentar: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
   },
 
   tarjetaConexion: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 14,
-    padding: 13,
-    borderWidth: 1,
+    padding: 14,
+    borderRadius: 20,
     marginBottom: 12,
   },
 
-  conexionInactiva: {
-    backgroundColor: "#FFFBEB",
-    borderColor: "#FDE68A",
-  },
-
-  informacionConexion: {
-    flex: 1,
-    gap: 3,
-  },
-
-  tituloConexion: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  textoConexionInactiva: {
-    color: "#92400E",
-  },
-
-  descripcionConexion: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: "#64748B",
+  circuloConexion: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

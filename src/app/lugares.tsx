@@ -1,6 +1,7 @@
+import Ionicons from "@react-native-vector-icons/ionicons";
+import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
@@ -16,12 +17,25 @@ import {
 
 import { obtenerCategoriasApi } from "../api/categorias";
 import { obtenerLugaresApi } from "../api/lugares";
+import Texto from "../components/ui/Texto";
+import { useTema } from "../tema/TemaContext";
+import { fuentes } from "../tema/tipografia";
+import { obtenerInfoCategoria } from "../utils/categorias";
 
 import type { Lugar } from "../tipos/lugar";
 
 const AZUL = "#075985";
 
+const SOMBRA = {
+  shadowColor: "#000",
+  shadowOpacity: 0.1,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 4,
+} as const;
+
 export default function LugaresScreen() {
+  const { colores } = useTema();
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<
     string | null
@@ -93,98 +107,131 @@ export default function LugaresScreen() {
     <FlatList
       data={lugaresFiltrados}
       keyExtractor={(item) => item.id}
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.lista}
       ListHeaderComponent={
         <>
-          <TextInput
-            value={busqueda}
-            onChangeText={setBusqueda}
-            placeholder="Buscar por nombre"
-            placeholderTextColor="#7C8792"
-            autoCapitalize="none"
-            returnKeyType="search"
-            style={styles.buscador}
-            accessibilityLabel="Buscar lugares por nombre"
-          />
+          {/* Buscador */}
+          <View
+            style={[
+              styles.buscador,
+              SOMBRA,
+              { backgroundColor: colores.superficie },
+            ]}
+          >
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={colores.textoSecundario}
+            />
+            <TextInput
+              value={busqueda}
+              onChangeText={setBusqueda}
+              placeholder="Buscar por nombre"
+              placeholderTextColor={colores.textoSecundario}
+              autoCapitalize="none"
+              returnKeyType="search"
+              style={[styles.input, { color: colores.texto }]}
+              accessibilityLabel="Buscar lugares por nombre"
+            />
+            {busqueda.length > 0 && (
+              <Pressable
+                onPress={() => setBusqueda("")}
+                hitSlop={12}
+                role="button"
+                accessibilityLabel="Borrar búsqueda"
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={colores.textoSecundario}
+                />
+              </Pressable>
+            )}
+          </View>
 
+          {/* Categorías */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.categorias}
+            contentContainerStyle={styles.categoriasContenido}
           >
-            <Pressable
+            <Chip
+              etiqueta="Todas"
+              icono="apps-outline"
+              activo={categoriaSeleccionada === null}
               onPress={() => setCategoriaSeleccionada(null)}
-              style={[
-                styles.chip,
-                categoriaSeleccionada === null && styles.chipActivo,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.textoChip,
-                  categoriaSeleccionada === null && styles.textoChipActivo,
-                ]}
-              >
-                Todas
-              </Text>
-            </Pressable>
+            />
 
             {categorias.map((categoria) => (
-              <Pressable
+              <Chip
                 key={categoria.id}
+                etiqueta={categoria.nombre}
+                icono={obtenerInfoCategoria(categoria.id).icono}
+                activo={categoriaSeleccionada === categoria.id}
                 onPress={() => setCategoriaSeleccionada(categoria.id)}
-                style={[
-                  styles.chip,
-                  categoriaSeleccionada === categoria.id && styles.chipActivo,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.textoChip,
-                    categoriaSeleccionada === categoria.id &&
-                      styles.textoChipActivo,
-                  ]}
-                >
-                  {categoria.nombre}
-                </Text>
-              </Pressable>
+              />
             ))}
           </ScrollView>
         </>
       }
-      renderItem={({ item }) => (
-        <Link
-          href={{
-            pathname: "/lugares/[id]",
-            params: { id: item.id },
-          }}
-          asChild
-        >
-          <Pressable
-            style={styles.tarjeta}
-            role="button"
-            accessibilityLabel={`Ver detalle de ${item.nombre}`}
-          >
-            {item.imagenes.length > 0 ? (
-              <Image
-                source={{ uri: item.imagenes[0] }}
-                style={styles.imagen}
-                contentFit="cover"
-                transition={200}
-                alt={`Imagen de ${item.nombre}`}
-              />
-            ) : (
-              <View style={styles.imagenVacia}>
-                <Text>Sin imagen disponible</Text>
-              </View>
-            )}
+      renderItem={({ item }) => {
+        const {
+          icono,
+          color,
+          nombre: nombreCategoria,
+        } = obtenerInfoCategoria(item.categoriaId);
 
-            <Text style={styles.nombre}>{item.nombre}</Text>
-            <Text>{item.descripcionCorta}</Text>
-            <Text style={styles.direccion}>{item.direccion}</Text>
-          </Pressable>
-        </Link>
-      )}
+        return (
+          <Link
+            href={{
+              pathname: "/lugares/[id]",
+              params: { id: item.id },
+            }}
+            asChild
+          >
+            <Pressable
+              style={styles.tarjeta}
+              role="button"
+              accessibilityLabel={`Ver detalle de ${item.nombre}`}
+            >
+              <View style={styles.contenedorImagen}>
+                {item.imagenes.length > 0 ? (
+                  <Image
+                    source={{ uri: item.imagenes[0] }}
+                    style={styles.imagen}
+                    contentFit="cover"
+                    transition={200}
+                    alt={`Imagen de ${item.nombre}`}
+                  />
+                ) : (
+                  <View style={styles.imagenVacia}>
+                    <Text>Sin imagen disponible</Text>
+                  </View>
+                )}
+
+                {/* Categoría en la esquina de la foto */}
+                <View
+                  style={[
+                    styles.etiquetaCategoria,
+                    { backgroundColor: colores.superficie },
+                  ]}
+                >
+                  <Ionicons name={icono} size={14} color={color} />
+                  <Texto style={{ fontSize: 12, fontWeight: "600" }}>
+                    {nombreCategoria}
+                  </Texto>
+                </View>
+              </View>
+
+              <Text style={styles.nombre}>{item.nombre}</Text>
+              <Text>{item.descripcionCorta}</Text>
+              <Text style={styles.direccion}>{item.direccion}</Text>
+            </Pressable>
+          </Link>
+        );
+      }}
       ListEmptyComponent={
         <View style={styles.vacio}>
           <Text style={styles.vacioTitulo}>
@@ -204,6 +251,48 @@ export default function LugaresScreen() {
   );
 }
 
+interface ChipProps {
+  etiqueta: string;
+  icono: React.ComponentProps<typeof Ionicons>["name"];
+  activo: boolean;
+  onPress: () => void;
+}
+
+function Chip({ etiqueta, icono, activo, onPress }: ChipProps) {
+  const { colores } = useTema();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      role="button"
+      accessibilityLabel={`Filtrar por ${etiqueta}`}
+      accessibilityState={{ selected: activo }}
+      style={[
+        styles.chip,
+        {
+          backgroundColor: activo ? colores.primario : colores.superficie,
+          borderColor: activo ? colores.primario : colores.borde,
+        },
+      ]}
+    >
+      <Ionicons
+        name={icono}
+        size={16}
+        color={activo ? colores.sobrePrimario : colores.primarioFuerte}
+      />
+      <Texto
+        style={{
+          fontSize: 14,
+          fontWeight: "600",
+          color: activo ? colores.sobrePrimario : colores.texto,
+        }}
+      >
+        {etiqueta}
+      </Texto>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   lista: {
     flexGrow: 1,
@@ -212,41 +301,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
   buscador: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: "#17202A",
+    height: 52,
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 8,
+  },
+  input: {
+    flex: 1,
+    fontFamily: fuentes.regular,
+    fontSize: 15,
+    paddingVertical: 0,
   },
   categorias: {
     marginTop: 8,
     marginBottom: 10,
   },
+  categoriasContenido: {
+    gap: 8,
+    paddingRight: 8,
+  },
   chip: {
     minHeight: 44,
-    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: AZUL,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  chipActivo: {
-    backgroundColor: AZUL,
-  },
-  textoChip: {
-    color: AZUL,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  textoChipActivo: {
-    color: "#FFFFFF",
+    borderRadius: 22,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   tarjeta: {
     padding: 16,
@@ -258,20 +342,32 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  contenedorImagen: {
+    marginBottom: 14,
+  },
   imagen: {
     width: "100%",
     height: 180,
     borderRadius: 12,
-    marginBottom: 14,
   },
   imagenVacia: {
     width: "100%",
     height: 180,
     borderRadius: 12,
-    marginBottom: 14,
     backgroundColor: "#E8EEF3",
     alignItems: "center",
     justifyContent: "center",
+  },
+  etiquetaCategoria: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   nombre: {
     fontSize: 20,

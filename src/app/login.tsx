@@ -6,16 +6,22 @@ import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
+
 import { ingresarApi } from "../api/auth";
+import { CampoFormulario } from "../components/CampoFormulario";
+import Aviso from "../components/ui/Aviso";
+import Boton from "../components/ui/Boton";
+import Logo from "../components/ui/Logo";
+import Texto from "../components/ui/Texto";
 import { useSesion } from "../contextos/SesionContext";
+import { useTema } from "../tema/TemaContext";
+import { fuentes } from "../tema/tipografia";
 
 const esquemaLogin = z.object({
   email: z.email("Ingresá un correo electrónico válido"),
@@ -27,12 +33,13 @@ const esquemaLogin = z.object({
 type DatosLogin = z.infer<typeof esquemaLogin>;
 
 export default function LoginScreen() {
+  const { colores } = useTema();
   const { iniciarSesion: guardarSesion } = useSesion();
 
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<DatosLogin>({
     resolver: zodResolver(esquemaLogin),
     defaultValues: {
@@ -68,154 +75,97 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={[estilos.safeArea, { backgroundColor: colores.fondo }]}
+    >
       <KeyboardAvoidingView
-        style={styles.container}
+        style={estilos.contenedor}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.contenido}>
-          <Text style={styles.titulo}>Mi Ciudad</Text>
-
-          <Text style={styles.subtitulo}>
-            Iniciá sesión para guardar tus favoritos y tu recorrido.
-          </Text>
-
-          <View style={styles.campo}>
-            <Text style={styles.label}>Correo electrónico</Text>
-
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { value, onChange } }) => (
-                <TextInput
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="tu@email.com"
-                  placeholderTextColor="#7C8792"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  style={styles.input}
-                  accessibilityLabel="Correo electrónico"
-                />
-              )}
-            />
-
-            {errors.email && (
-              <Text style={styles.error}>{errors.email.message}</Text>
-            )}
+        <ScrollView
+          contentContainerStyle={estilos.contenido}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={estilos.encabezado}>
+            <Logo tamano={72} />
+            <Texto style={estilos.titulo}>Mi Ciudad</Texto>
+            <Texto
+              style={[estilos.subtitulo, { color: colores.textoSecundario }]}
+            >
+              Iniciá sesión para guardar tus favoritos y tu recorrido.
+            </Texto>
           </View>
 
-          <View style={styles.campo}>
-            <Text style={styles.label}>Contraseña</Text>
-
-            <Controller
-              control={control}
-              name="contraseña"
-              render={({ field: { value, onChange } }) => (
-                <TextInput
-                  value={value}
-                  onChangeText={onChange}
-                  placeholder="Ingresá tu contraseña"
-                  placeholderTextColor="#7C8792"
-                  secureTextEntry
-                  autoComplete="password"
-                  style={styles.input}
-                  accessibilityLabel="Contraseña"
-                />
-              )}
-            />
-
-            {errors.contraseña && (
-              <Text style={styles.error}>{errors.contraseña.message}</Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { value, onChange } }) => (
+              <CampoFormulario
+                etiqueta="Correo electrónico"
+                value={value}
+                onChangeText={onChange}
+                placeholder="tu@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                error={errors.email?.message}
+              />
             )}
-          </View>
+          />
 
-          {errorEnvio && <Text style={styles.error}>{errorEnvio}</Text>}
+          <Controller
+            control={control}
+            name="contraseña"
+            render={({ field: { value, onChange } }) => (
+              <CampoFormulario
+                etiqueta="Contraseña"
+                value={value}
+                onChangeText={onChange}
+                placeholder="Ingresá tu contraseña"
+                secureTextEntry
+                autoComplete="password"
+                error={errors.contraseña?.message}
+              />
+            )}
+          />
 
-          <Pressable
-            style={styles.boton}
+          {errorEnvio ? <Aviso mensaje={errorEnvio} /> : null}
+
+          <Boton
+            titulo="Iniciar sesión"
+            cargando={isSubmitting}
             onPress={handleSubmit(enviar)}
-            role="button"
-            accessibilityLabel="Iniciar sesión"
-          >
-            <Text style={styles.textoBoton}>Iniciar sesión</Text>
-          </Pressable>
+          />
 
-          <Link href="/registro" replace style={styles.enlace}>
+          <Link
+            href="/registro"
+            replace
+            style={[estilos.enlace, { color: colores.primarioFuerte }]}
+          >
             ¿No tenés cuenta? Registrate
           </Link>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  container: {
-    flex: 1,
-  },
+const estilos = StyleSheet.create({
+  safeArea: { flex: 1 },
+  contenedor: { flex: 1 },
   contenido: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     padding: 24,
-    gap: 20,
+    gap: 18,
   },
-  titulo: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  subtitulo: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#5F6B76",
-  },
-  campo: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#17202A",
-  },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#17202A",
-    backgroundColor: "#FFFFFF",
-  },
-  boton: {
-    minHeight: 52,
-    backgroundColor: "#075985",
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textoBoton: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  error: {
-    color: "#B42318",
-    fontSize: 14,
-  },
+  encabezado: { alignItems: "center", gap: 10, marginBottom: 8 },
+  titulo: { fontSize: 30, lineHeight: 38, fontWeight: "700" },
+  subtitulo: { fontSize: 15, lineHeight: 22, textAlign: "center" },
   enlace: {
-    color: "#075985",
-    fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fuentes.semibold,
+    fontSize: 15,
     textAlign: "center",
+    paddingVertical: 12,
   },
 });

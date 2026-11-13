@@ -1,10 +1,9 @@
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TextInputProps,
-  View,
-} from "react-native";
+import { useState } from "react";
+import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
+
+import { useTema } from "../tema/TemaContext";
+import { fuentes } from "../tema/tipografia";
+import Texto from "./ui/Texto";
 
 interface CampoFormularioProps extends TextInputProps {
   etiqueta: string;
@@ -15,46 +14,64 @@ export function CampoFormulario({
   etiqueta,
   error,
   style,
+  onFocus,
+  onBlur,
   ...resto
 }: CampoFormularioProps) {
+  const { colores } = useTema();
+  const [enfocado, setEnfocado] = useState(false);
+
+  const colorBorde = error
+    ? colores.error
+    : enfocado
+      ? colores.primarioFuerte
+      : colores.borde;
+
   return (
-    <View style={styles.campo}>
-      <Text style={styles.etiqueta}>{etiqueta}</Text>
+    <View style={estilos.campo}>
+      <Texto style={estilos.etiqueta}>{etiqueta}</Texto>
 
       <TextInput
-        placeholderTextColor="#7C8792"
+        placeholderTextColor={colores.textoSecundario}
         accessibilityLabel={etiqueta}
-        style={[styles.input, style]}
         {...resto}
+        onFocus={(evento) => {
+          setEnfocado(true);
+          onFocus?.(evento);
+        }}
+        onBlur={(evento) => {
+          setEnfocado(false);
+          onBlur?.(evento);
+        }}
+        style={[
+          estilos.input,
+          {
+            borderColor: colorBorde,
+            backgroundColor: colores.superficie,
+            color: colores.texto,
+          },
+          style,
+        ]}
       />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error ? (
+        <Texto style={[estilos.error, { color: colores.error }]}>{error}</Texto>
+      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  campo: {
-    gap: 8,
-  },
-  etiqueta: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#17202A",
-  },
+const estilos = StyleSheet.create({
+  campo: { gap: 8 },
+  etiqueta: { fontSize: 14, fontWeight: "600" },
   input: {
     minHeight: 52,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    fontFamily: fuentes.regular,
     fontSize: 16,
-    color: "#17202A",
-    backgroundColor: "#FFFFFF",
   },
-  error: {
-    color: "#B42318",
-    fontSize: 14,
-  },
+  error: { fontSize: 13, lineHeight: 18 },
 });

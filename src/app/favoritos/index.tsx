@@ -1,6 +1,6 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
-import { Link, Stack, useFocusEffect } from "expo-router";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,67 +8,88 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { obtenerLugaresApi } from "../../api/lugares";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
+import Boton from "../../components/ui/Boton";
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import {
   obtenerFavoritos,
   quitarFavorito,
   sincronizarFavoritos,
 } from "../../servicios/favoritos";
-import { obtenerLugaresApi } from "../../api/lugares";
+import { useTema } from "../../tema/TemaContext";
+import { fuentes } from "../../tema/tipografia";
 import type { Lugar } from "../../tipos/lugar";
 
-const AZUL = "#075985";
+type EstadoFavoritos =
+  | { fase: "cargando" }
+  | { fase: "error"; mensaje: string }
+  | { fase: "listo"; lugares: Lugar[] };
 
 export default function FavoritosScreen() {
+  const { colores } = useTema();
   const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
+  const insets = useSafeAreaInsets();
 
-  const [lugares, setLugares] = useState<Lugar[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [estado, setEstado] = useState<EstadoFavoritos>({
+    fase: "cargando",
+  });
+  const [intento, setIntento] = useState(0);
+  const [refrescando, setRefrescando] = useState(false);
 
-  const cargarFavoritos = useCallback(async () => {
-    if (!sesion || bloqueada) {
-      setLugares([]);
-      setCargando(false);
-      return;
-    }
+  const cargarFavoritos = useCallback(
+    async (esRefresco = false) => {
+      if (!sesion || bloqueada) {
+        setEstado({ fase: "listo", lugares: [] });
+        return;
+      }
 
-    try {
-      setCargando(true);
-      setError(null);
+      try {
+        if (esRefresco) setRefrescando(true);
+        else setEstado({ fase: "cargando" });
 
-            try {
-              await sincronizarFavoritos(sesion.email);
-            } catch {
-              // Si la API no responde, seguimos mostrando los favoritos locales.
-            }
+        try {
+          await sincronizarFavoritos(sesion.email);
+        } catch {
+          // Seguimos con los datos locales si la API falla
+        }
 
-      const [favoritos, respuesta] = await Promise.all([
-        obtenerFavoritos(sesion.email),
-        obtenerLugaresApi(),
-      ]);
+        const [favoritos, respuesta] = await Promise.all([
+          obtenerFavoritos(sesion.email),
+          obtenerLugaresApi(),
+        ]);
 
-      const idsFavoritos = new Set(
-        favoritos.map((favorito) => favorito.lugarId),
-      );
+        const idsFavoritos = new Set(
+          favoritos.map((favorito) => favorito.lugarId),
+        );
 
-      setLugares(respuesta.datos.filter((lugar) => idsFavoritos.has(lugar.id)));
-    } catch {
-      setError("No pudimos cargar tus favoritos. Intentá nuevamente.");
-    } finally {
-      setCargando(false);
-    }
-  }, [sesion?.email, bloqueada]);
+        setEstado({
+          fase: "listo",
+          lugares: respuesta.datos.filter((lugar) =>
+            idsFavoritos.has(lugar.id),
+          ),
+        });
+      } catch {
+        setEstado({
+          fase: "error",
+          mensaje: "No pudimos cargar tus lugares guardados.",
+        });
+      } finally {
+        if (esRefresco) setRefrescando(false);
+      }
+    },
+    [sesion?.email, bloqueada],
+  );
 
   useFocusEffect(
     useCallback(() => {
       void cargarFavoritos();
-    }, [cargarFavoritos]),
+    }, [cargarFavoritos, intento]),
   );
 
   function confirmarQuitar(lugar: Lugar) {
@@ -86,8 +107,15 @@ export default function FavoritosScreen() {
             try {
               await quitarFavorito(sesion.email, lugar.id);
 
-              setLugares((actuales) =>
-                actuales.filter((item) => item.id !== lugar.id),
+              setEstado((anterior) =>
+                anterior.fase === "listo"
+                  ? {
+                      ...anterior,
+                      lugares: anterior.lugares.filter(
+                        (item) => item.id !== lugar.id,
+                      ),
+                    }
+                  : anterior,
               );
             } catch {
               Alert.alert(
@@ -106,176 +134,296 @@ export default function FavoritosScreen() {
       <Stack.Screen
         options={{
           title: "Mis favoritos",
-          headerStyle: { backgroundColor: AZUL },
-          headerTintColor: "#FFFFFF",
-          headerTitleStyle: { fontWeight: "700" },
+          headerStyle: { backgroundColor: colores.superficie },
+          headerTintColor: colores.texto,
+          headerTitleStyle: { fontFamily: fuentes.negrita, fontSize: 18 },
           headerShadowVisible: false,
         }}
       />
 
       {cargandoSesion ? (
-        <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={AZUL} />
-          <Text style={styles.textoSecundario}>Cargando tu sesión...</Text>
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <ActivityIndicator size="large" color={colores.primarioFuerte} />
+          <Texto
+            style={{
+              fontSize: 15,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            Cargando tu sesión...
+          </Texto>
         </View>
       ) : sesion && bloqueada ? (
         <BloqueoSesion email={sesion.email} />
       ) : !sesion ? (
-        <View style={styles.centrado}>
-          <Ionicons name="heart-outline" size={62} color={AZUL} />
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="heart-outline"
+              size={32}
+              color={colores.primarioFuerte}
+            />
+          </View>
 
-          <Text style={styles.tituloVacio}>Tus favoritos son personales</Text>
+          <Texto
+            style={{ fontSize: 18, fontWeight: "700", textAlign: "center" }}
+          >
+            Tus favoritos son personales
+          </Texto>
 
-          <Text style={styles.textoSecundario}>
-            Iniciá sesión para guardar y consultar tus lugares favoritos.
-          </Text>
+          <Texto
+            style={{
+              fontSize: 15,
+              lineHeight: 22,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            Iniciá sesión para guardar y tener siempre a mano los lugares de
+            Colón que más te gustan.
+          </Texto>
 
-          <Link href="/login" asChild>
-            <Pressable
-              style={styles.botonPrincipal}
-              accessibilityRole="button"
+          <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+            <Boton
+              titulo="Iniciar sesión"
+              onPress={() => router.push("/login")}
               accessibilityLabel="Iniciar sesión"
-            >
-              <Text style={styles.textoBotonPrincipal}>Iniciar sesión</Text>
-            </Pressable>
-          </Link>
+            />
+          </View>
+        </View>
+      ) : estado.fase === "cargando" ? (
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <ActivityIndicator size="large" color={colores.primarioFuerte} />
+          <Texto
+            style={{
+              fontSize: 15,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            Cargando favoritos...
+          </Texto>
+        </View>
+      ) : estado.fase === "error" ? (
+        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.errorSuave },
+            ]}
+          >
+            <Ionicons
+              name="cloud-offline-outline"
+              size={32}
+              color={colores.error}
+            />
+          </View>
+
+          <Texto
+            style={{
+              fontSize: 18,
+              fontWeight: "700",
+              color: colores.error,
+              textAlign: "center",
+            }}
+          >
+            No pudimos cargar tus favoritos
+          </Texto>
+
+          <Texto
+            style={{
+              fontSize: 15,
+              lineHeight: 22,
+              color: colores.textoSecundario,
+              textAlign: "center",
+            }}
+          >
+            {estado.mensaje}
+          </Texto>
+
+          <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+            <Boton
+              titulo="Reintentar"
+              onPress={() => setIntento((anterior) => anterior + 1)}
+              accessibilityLabel="Reintentar cargar favoritos"
+            />
+          </View>
         </View>
       ) : (
-        <View style={styles.container}>
+        <View style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
           <FlatList
-            data={lugares}
+            data={estado.lugares}
             keyExtractor={(lugar) => lugar.id}
-            contentContainerStyle={styles.lista}
-            refreshing={cargando}
-            onRefresh={() => void cargarFavoritos()}
+            contentContainerStyle={[
+              estilos.lista,
+              { paddingBottom: 16 + insets.bottom },
+            ]}
+            refreshing={refrescando}
+            onRefresh={() => void cargarFavoritos(true)}
             ListHeaderComponent={
-              <View style={styles.encabezado}>
-                <Text style={styles.titulo}>Tus lugares guardados</Text>
-                <Text style={styles.subtitulo}>
-                  Tené a mano los rincones de Colón que más te gustan.
-                </Text>
-              </View>
-            }
-            ListEmptyComponent={
-              cargando ? (
-                <View style={styles.estado}>
-                  <ActivityIndicator size="large" color={AZUL} />
-                  <Text style={styles.textoSecundario}>
-                    Cargando favoritos...
-                  </Text>
-                </View>
-              ) : error ? (
-                <View style={styles.estado}>
-                  <Ionicons
-                    name="alert-circle-outline"
-                    size={54}
-                    color="#B42318"
-                  />
-                  <Text style={styles.tituloVacio}>
-                    No pudimos cargar tus favoritos
-                  </Text>
-                  <Text style={styles.textoSecundario}>{error}</Text>
-
-                  <Pressable
-                    style={styles.botonPrincipal}
-                    onPress={() => void cargarFavoritos()}
-                    accessibilityRole="button"
+              estado.lugares.length > 0 ? (
+                <View
+                  style={[
+                    estilos.encabezado,
+                    { backgroundColor: colores.fondo },
+                  ]}
+                >
+                  <View
+                    style={[
+                      estilos.iconoEncabezado,
+                      { backgroundColor: colores.primarioSuave },
+                    ]}
                   >
-                    <Text style={styles.textoBotonPrincipal}>Reintentar</Text>
-                  </Pressable>
+                    <Ionicons
+                      name="heart"
+                      size={16}
+                      color={colores.primarioFuerte}
+                    />
+                  </View>
+                  <Texto style={{ fontSize: 17, fontWeight: "700" }}>
+                    Tus lugares guardados
+                  </Texto>
                 </View>
-              ) : (
-                <View style={styles.estado}>
-                  <Ionicons name="heart-outline" size={64} color="#94A3B8" />
-
-                  <Text style={styles.tituloVacio}>
-                    Todavía no tenés favoritos
-                  </Text>
-
-                  <Text style={styles.textoSecundario}>
-                    Explorá Colón y guardá los lugares que quieras visitar.
-                  </Text>
-
-                  <Link href="/" asChild>
-                    <Pressable
-                      style={styles.botonPrincipal}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.textoBotonPrincipal}>
-                        Explorar lugares
-                      </Text>
-                    </Pressable>
-                  </Link>
+              ) : null
+            }
+            ItemSeparatorComponent={() => <View style={estilos.separador} />}
+            ListEmptyComponent={
+              <View style={estilos.estadoVacio}>
+                <View
+                  style={[
+                    estilos.circuloEstado,
+                    { backgroundColor: colores.primarioSuave },
+                  ]}
+                >
+                  <Ionicons
+                    name="heart-outline"
+                    size={32}
+                    color={colores.primarioFuerte}
+                  />
                 </View>
-              )
+
+                <Texto
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "700",
+                    textAlign: "center",
+                  }}
+                >
+                  Todavía no tenés favoritos
+                </Texto>
+
+                <Texto
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 22,
+                    color: colores.textoSecundario,
+                    textAlign: "center",
+                  }}
+                >
+                  Explorá Colón y guardá los lugares que quieras visitar para
+                  tenerlos listos acá.
+                </Texto>
+
+                <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+                  <Boton
+                    titulo="Explorar lugares"
+                    onPress={() => router.push("/")}
+                    accessibilityLabel="Explorar lugares"
+                  />
+                </View>
+              </View>
             }
             renderItem={({ item }) => {
               const imagen = item.imagenes[0];
 
               return (
-                <View style={styles.tarjeta}>
-                  <Link
-                    href={{
-                      pathname: "/lugares/[id]",
-                      params: { id: item.id },
-                    }}
-                    asChild
+                <View
+                  style={[
+                    estilos.tarjeta,
+                    {
+                      backgroundColor: colores.superficie,
+                      borderColor: colores.borde,
+                    },
+                  ]}
+                >
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/lugares/[id]",
+                        params: { id: item.id },
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver detalle de ${item.nombre}`}
                   >
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Ver detalle de ${item.nombre}`}
+                    <View
+                      style={[
+                        estilos.contenedorImagen,
+                        { backgroundColor: colores.primarioSuave },
+                      ]}
                     >
                       {imagen ? (
                         <Image
                           source={{ uri: imagen }}
-                          style={styles.imagen}
+                          style={estilos.imagen}
                           contentFit="cover"
                           transition={200}
                           alt={`Imagen de ${item.nombre}`}
                         />
                       ) : (
-                        <View style={styles.sinImagen}>
+                        <View style={estilos.sinImagen}>
                           <Ionicons
                             name="image-outline"
-                            size={36}
-                            color="#94A3B8"
+                            size={42}
+                            color={colores.primarioFuerte}
                           />
-                          <Text style={styles.textoSinImagen}>
-                            Sin imagen disponible
-                          </Text>
                         </View>
                       )}
+                    </View>
 
-                      <View style={styles.contenidoTarjeta}>
-                        <Text style={styles.nombre}>{item.nombre}</Text>
+                    <View style={estilos.contenidoTarjeta}>
+                      <Texto
+                        style={{
+                          fontSize: 19,
+                          lineHeight: 26,
+                          fontWeight: "700",
+                        }}
+                      >
+                        {item.nombre}
+                      </Texto>
 
-                        <View style={styles.filaDireccion}>
-                          <Ionicons
-                            name="location-outline"
-                            size={17}
-                            color="#64748B"
-                          />
-
-                          <Text style={styles.direccion} numberOfLines={2}>
-                            {item.direccion}
-                          </Text>
-                        </View>
-
-                        <Text style={styles.verDetalle}>
-                          Ver detalle
-                          {"  "}
-                          <Ionicons
-                            name="arrow-forward"
-                            size={15}
-                            color={AZUL}
-                          />
-                        </Text>
+                      <View style={estilos.filaDireccion}>
+                        <Ionicons
+                          name="location-outline"
+                          size={18}
+                          color={colores.textoSecundario}
+                        />
+                        <Texto
+                          style={{
+                            flex: 1,
+                            fontSize: 14,
+                            lineHeight: 20,
+                            color: colores.textoSecundario,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {item.direccion}
+                        </Texto>
                       </View>
-                    </Pressable>
-                  </Link>
+                    </View>
+                  </Pressable>
 
                   <Pressable
-                    style={styles.botonQuitar}
+                    style={[
+                      estilos.botonQuitar,
+                      { backgroundColor: colores.errorSuave },
+                    ]}
                     onPress={() => confirmarQuitar(item)}
                     accessibilityRole="button"
                     accessibilityLabel={`Quitar ${item.nombre} de favoritos`}
@@ -283,10 +431,17 @@ export default function FavoritosScreen() {
                     <Ionicons
                       name="heart-dislike-outline"
                       size={20}
-                      color="#B42318"
+                      color={colores.error}
                     />
-
-                    <Text style={styles.textoQuitar}>Quitar de favoritos</Text>
+                    <Texto
+                      style={{
+                        color: colores.error,
+                        fontSize: 14,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Quitar de favoritos
+                    </Texto>
                   </Pressable>
                 </View>
               );
@@ -298,136 +453,106 @@ export default function FavoritosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const estilos = StyleSheet.create({
+  contenedor: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
+
   lista: {
-    paddingHorizontal: 20,
-    paddingBottom: 36,
     flexGrow: 1,
+    padding: 16,
   },
+
   encabezado: {
-    paddingTop: 24,
-    paddingBottom: 22,
-    gap: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    marginBottom: 8,
   },
-  titulo: {
-    fontSize: 25,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  subtitulo: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#64748B",
-  },
-  tarjeta: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 18,
-    elevation: 2,
-  },
-  imagen: {
-    width: "100%",
-    height: 165,
-    backgroundColor: "#E2E8F0",
-  },
-  sinImagen: {
-    height: 165,
+
+  iconoEncabezado: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#E2E8F0",
   },
-  textoSinImagen: {
-    fontSize: 14,
-    color: "#64748B",
+
+  separador: {
+    height: 12,
   },
+
+  centro: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 12,
+  },
+
+  estadoVacio: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    gap: 12,
+  },
+
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+
+  tarjeta: {
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  contenedorImagen: {
+    height: 170,
+  },
+
+  imagen: {
+    width: "100%",
+    height: "100%",
+  },
+
+  sinImagen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   contenidoTarjeta: {
     padding: 16,
-    gap: 9,
+    gap: 12,
   },
-  nombre: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#17202A",
-  },
+
   filaDireccion: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 6,
+    gap: 8,
   },
-  direccion: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#64748B",
-  },
-  verDetalle: {
-    marginTop: 4,
-    color: AZUL,
-    fontSize: 15,
-    fontWeight: "700",
-  },
+
   botonQuitar: {
-    minHeight: 50,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  textoQuitar: {
-    color: "#B42318",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  centrado: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    padding: 24,
-  },
-  estado: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 64,
-    paddingHorizontal: 12,
-    gap: 16,
-  },
-  tituloVacio: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#17202A",
-    textAlign: "center",
-  },
-  textoSecundario: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#64748B",
-    textAlign: "center",
-  },
-  botonPrincipal: {
-    minHeight: 52,
-    minWidth: 180,
-    backgroundColor: AZUL,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    marginTop: 8,
-  },
-  textoBotonPrincipal: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 24,
   },
 });

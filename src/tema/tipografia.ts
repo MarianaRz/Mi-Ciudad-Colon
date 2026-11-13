@@ -1,22 +1,13 @@
+export const fuentes = {
+  regular: "PlusJakartaSans_400Regular",
+  media: "PlusJakartaSans_500Medium",
+  semibold: "PlusJakartaSans_600SemiBold",
+  negrita: "PlusJakartaSans_700Bold",
+} as const;
+
 export const tipografia = {
-  tituloPantalla: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontWeight: "700" as const,
-  },
-  tituloSeccion: {
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: "700" as const,
-  },
-  cuerpo: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: "400" as const,
-  },
-  secundario: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "400" as const,
-  },
+  tituloPantalla: { fontFamily: fuentes.negrita, fontSize: 26, lineHeight: 32 },
+  tituloSeccion: { fontFamily: fuentes.negrita, fontSize: 20, lineHeight: 26 },
+  cuerpo: { fontFamily: fuentes.regular, fontSize: 16, lineHeight: 24 },
+  secundario: { fontFamily: fuentes.regular, fontSize: 14, lineHeight: 20 },
 } as const;

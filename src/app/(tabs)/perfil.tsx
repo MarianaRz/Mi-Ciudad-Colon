@@ -1,4 +1,5 @@
-import { Link, useFocusEffect } from "expo-router";
+import Ionicons from "@react-native-vector-icons/ionicons";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,20 +7,140 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@react-native-vector-icons/ionicons";
 
-import { obtenerMiUsuarioApi } from "../../api/usuario";
 import type { UsuarioApi } from "../../api/usuario";
+import { obtenerMiUsuarioApi } from "../../api/usuario";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
+import Boton from "../../components/ui/Boton";
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
+import { useTema } from "../../tema/TemaContext";
 
-const AZUL = "#075985";
+const SOMBRA = {
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 2,
+} as const;
+
+type IconoAcceso = "heart-outline" | "calendar-outline" | "footsteps-outline";
+type IconoDato = "mail-outline" | "lock-closed-outline";
+type IconoBeneficio = "heart-outline" | "footsteps-outline" | "cloud-outline";
+
+function AccesoFila({
+  icono,
+  titulo,
+  subtitulo,
+  alPresionar,
+}: {
+  icono: IconoAcceso;
+  titulo: string;
+  subtitulo: string;
+  alPresionar: () => void;
+}) {
+  const { colores } = useTema();
+
+  return (
+    <Pressable
+      onPress={alPresionar}
+      role="button"
+      accessibilityLabel={`${titulo}. ${subtitulo}`}
+      style={[estilos.acceso, SOMBRA, { backgroundColor: colores.superficie }]}
+    >
+      <View
+        style={[estilos.iconoTile, { backgroundColor: colores.primarioSuave }]}
+      >
+        <Ionicons name={icono} size={24} color={colores.primarioFuerte} />
+      </View>
+
+      <View style={estilos.textos}>
+        <Texto style={{ fontSize: 16, fontWeight: "700" }}>{titulo}</Texto>
+        <Texto
+          style={{
+            fontSize: 13,
+            lineHeight: 19,
+            color: colores.textoSecundario,
+          }}
+        >
+          {subtitulo}
+        </Texto>
+      </View>
+
+      <Ionicons
+        name="chevron-forward"
+        size={22}
+        color={colores.textoSecundario}
+      />
+    </Pressable>
+  );
+}
+
+function FilaDato({
+  icono,
+  titulo,
+  valor,
+  primera = false,
+}: {
+  icono: IconoDato;
+  titulo: string;
+  valor: string;
+  primera?: boolean;
+}) {
+  const { colores } = useTema();
+
+  return (
+    <View
+      style={[
+        estilos.filaDato,
+        !primera && {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colores.borde,
+        },
+      ]}
+    >
+      <View
+        style={[estilos.iconoTile, { backgroundColor: colores.primarioSuave }]}
+      >
+        <Ionicons name={icono} size={22} color={colores.primarioFuerte} />
+      </View>
+
+      <View style={estilos.textos}>
+        <Texto style={{ fontSize: 15, fontWeight: "700" }}>{titulo}</Texto>
+        <Texto
+          style={{
+            fontSize: 13,
+            lineHeight: 19,
+            color: colores.textoSecundario,
+          }}
+        >
+          {valor}
+        </Texto>
+      </View>
+    </View>
+  );
+}
+
+function Beneficio({ icono, texto }: { icono: IconoBeneficio; texto: string }) {
+  const { colores } = useTema();
+
+  return (
+    <View style={estilos.beneficio}>
+      <View
+        style={[estilos.iconoTile, { backgroundColor: colores.primarioSuave }]}
+      >
+        <Ionicons name={icono} size={22} color={colores.primarioFuerte} />
+      </View>
+      <Texto style={{ fontSize: 15, lineHeight: 22, flex: 1 }}>{texto}</Texto>
+    </View>
+  );
+}
 
 export default function PerfilScreen() {
+  const { colores } = useTema();
   const { sesion, cargando, bloqueada, cerrarSesion } = useSesion();
 
   const emailSesion = sesion?.email;
@@ -76,9 +197,11 @@ export default function PerfilScreen() {
 
   if (cargando) {
     return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color={AZUL} />
-        <Text style={styles.textoSecundario}>Cargando tu cuenta...</Text>
+      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+        <ActivityIndicator size="large" color={colores.primarioFuerte} />
+        <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
+          Cargando tu cuenta...
+        </Texto>
       </View>
     );
   }
@@ -89,447 +212,281 @@ export default function PerfilScreen() {
 
   if (!sesion) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
-        <ScrollView contentContainerStyle={styles.contenido}>
-          <View style={styles.bienvenida}>
-            <View style={styles.avatarInvitado}>
-              <Text style={styles.iconoAvatar}>👤</Text>
+      <SafeAreaView
+        style={[estilos.safeArea, { backgroundColor: colores.fondo }]}
+        edges={[]}
+      >
+        <ScrollView
+          contentContainerStyle={estilos.contenido}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={estilos.bienvenida}>
+            <View
+              style={[
+                estilos.avatarInvitado,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={44}
+                color={colores.primarioFuerte}
+              />
             </View>
 
-            <Text style={styles.tituloBienvenida}>Tu espacio en Colón</Text>
+            <Texto style={estilos.titulo}>Tu espacio en Colón</Texto>
 
-            <Text style={styles.textoBienvenida}>
-              Descubrí la ciudad a tu manera. Iniciá sesión para guardar tus
-              lugares favoritos y registrar tus visitas.
-            </Text>
-          </View>
-
-          <View style={styles.tarjetaInvitado}>
-            <Text style={styles.tituloTarjeta}>
-              Tu próxima aventura empieza acá
-            </Text>
-
-            <Text style={styles.textoSecundario}>
-              Con una cuenta podés conservar tus lugares preferidos y consultar
-              tu recorrido cuando quieras.
-            </Text>
-
-            <Link href="/login" asChild>
-              <Pressable
-                style={styles.botonPrincipal}
-                accessibilityRole="button"
-                accessibilityLabel="Iniciar sesión"
-              >
-                <Text style={styles.textoBotonPrincipal}>Iniciar sesión</Text>
-              </Pressable>
-            </Link>
-
-            <Link href="/registro" asChild>
-              <Pressable
-                style={styles.botonSecundario}
-                accessibilityRole="button"
-                accessibilityLabel="Crear una cuenta"
-              >
-                <Text style={styles.textoBotonSecundario}>
-                  Crear una cuenta
-                </Text>
-              </Pressable>
-            </Link>
-          </View>
-
-          <Link href="/" asChild>
-            <Pressable
-              style={styles.enlaceExplorar}
-              accessibilityRole="button"
-              accessibilityLabel="Explorar lugares sin iniciar sesión"
+            <Texto
+              style={{
+                fontSize: 15,
+                lineHeight: 23,
+                color: colores.textoSecundario,
+                textAlign: "center",
+              }}
             >
-              <Text style={styles.textoExplorar}>
-                Explorar lugares sin iniciar sesión →
-              </Text>
-            </Pressable>
-          </Link>
+              Descubrí la ciudad a tu manera. Con una cuenta guardás lo que más
+              te gusta.
+            </Texto>
+          </View>
+
+          <View
+            style={[
+              estilos.tarjeta,
+              SOMBRA,
+              { backgroundColor: colores.superficie },
+            ]}
+          >
+            <Beneficio
+              icono="heart-outline"
+              texto="Guardá tus lugares favoritos"
+            />
+            <Beneficio
+              icono="footsteps-outline"
+              texto="Registrá los lugares que visitaste"
+            />
+            <Beneficio
+              icono="cloud-outline"
+              texto="Conservá todo si cambiás de teléfono"
+            />
+          </View>
+
+          <Boton
+            titulo="Iniciar sesión"
+            onPress={() => router.push("/login")}
+          />
+
+          <Boton
+            titulo="Crear una cuenta"
+            variante="secundario"
+            onPress={() => router.push("/registro")}
+          />
+
+          <Boton
+            titulo="Explorar el mapa sin iniciar sesión"
+            variante="texto"
+            onPress={() => router.push("/")}
+          />
         </ScrollView>
       </SafeAreaView>
     );
   }
 
+  const inicial = (nombreUsuario ?? emailUsuario).charAt(0).toUpperCase();
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+    <SafeAreaView
+      style={[estilos.safeArea, { backgroundColor: colores.fondo }]}
+      edges={[]}
+    >
       <ScrollView
-        contentContainerStyle={styles.contenido}
+        contentContainerStyle={estilos.contenido}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.encabezadoCuenta}>
-          <View style={styles.avatar}>
-            <Text style={styles.inicialAvatar}>
-              {(nombreUsuario ?? emailUsuario).charAt(0).toUpperCase()}
-            </Text>
-          </View>
-
-          <View style={styles.datosCuenta}>
-            <Text style={styles.saludo}>
-              {nombreUsuario ? `¡Hola, ${nombreUsuario}!` : "¡Hola de nuevo!"}
-            </Text>
-
-            <Text style={styles.email} numberOfLines={2}>
-              {emailUsuario}
-            </Text>
-
-            <Text style={styles.estadoCuenta}>● Sesión activa</Text>
-          </View>
-        </View>
-
-        <Text style={styles.tituloSeccion}>Tu experiencia</Text>
-
-        <Link href="/favoritos" asChild>
-          <Pressable
-            style={styles.tarjetaAcceso}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir mis favoritos"
-          >
-            <View style={styles.iconoAccesoRosa}>
-              <Ionicons name="heart-outline" size={26} color="#E11D48" />
-            </View>
-
-            <View style={styles.textosAcceso}>
-              <Text style={styles.tituloAcceso}>Mis favoritos</Text>
-              <Text style={styles.subtituloAcceso}>
-                Tus lugares preferidos de Colón
-              </Text>
-            </View>
-
-            <Text style={styles.flecha}>›</Text>
-          </Pressable>
-        </Link>
-
-        <Link href="/eventos-guardados" asChild>
-          <Pressable
-            style={styles.tarjetaAcceso}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir mis eventos"
-          >
-            <View style={styles.iconoAccesoAzul}>
-              <Ionicons name="calendar-outline" size={26} color={AZUL} />
-            </View>
-
-            <View style={styles.textosAcceso}>
-              <Text style={styles.tituloAcceso}>Mis eventos</Text>
-              <Text style={styles.subtituloAcceso}>
-                Los eventos a los que querés ir
-              </Text>
-            </View>
-
-            <Text style={styles.flecha}>›</Text>
-          </Pressable>
-        </Link>
-
-        <Link href="/(tabs)/recorrido" asChild>
-          <Pressable
-            style={styles.tarjetaAcceso}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir mi recorrido"
-          >
-            <View style={styles.iconoAccesoAzul}>
-              <Text style={styles.iconoAcceso}>⌖</Text>
-            </View>
-
-            <View style={styles.textosAcceso}>
-              <Text style={styles.tituloAcceso}>Mi recorrido</Text>
-              <Text style={styles.subtituloAcceso}>
-                Reviví los lugares que visitaste
-              </Text>
-            </View>
-
-            <Text style={styles.flecha}>›</Text>
-          </Pressable>
-        </Link>
-
-        <Text style={styles.tituloSeccion}>Cuenta y seguridad</Text>
-
-        <View style={styles.tarjetaInformacion}>
-          <View style={styles.filaInformacion}>
-            <Text style={styles.iconoInformacion}>✉</Text>
-
-            <View style={styles.textosAcceso}>
-              <Text style={styles.tituloInformacion}>Correo electrónico</Text>
-              <Text style={styles.subtituloAcceso}>{emailUsuario}</Text>
-            </View>
-          </View>
-
-          <View style={styles.separador} />
-
-          <View style={styles.filaInformacion}>
-            <Text style={styles.iconoInformacion}>🔒</Text>
-
-            <View style={styles.textosAcceso}>
-              <Text style={styles.tituloInformacion}>Protección de sesión</Text>
-              <Text style={styles.subtituloAcceso}>
-                Bloqueo de sesión con opción de desbloqueo
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <Pressable
-          style={styles.botonCerrar}
-          onPress={confirmarCierreSesion}
-          accessibilityRole="button"
-          accessibilityLabel="Cerrar sesión"
+        {/* Perfil */}
+        <View
+          style={[
+            estilos.perfil,
+            SOMBRA,
+            { backgroundColor: colores.superficie },
+          ]}
         >
-          <Text style={styles.textoBotonCerrar}>Cerrar sesión</Text>
-        </Pressable>
+          <View style={[estilos.avatar, { backgroundColor: colores.primario }]}>
+            <Texto style={[estilos.inicial, { color: colores.sobrePrimario }]}>
+              {inicial}
+            </Texto>
+          </View>
 
-        <Text style={styles.pie}>
+          <Texto style={estilos.saludo}>
+            {nombreUsuario ? `¡Hola, ${nombreUsuario}!` : "¡Hola de nuevo!"}
+          </Texto>
+
+          <Texto
+            style={{ fontSize: 14, color: colores.textoSecundario }}
+            numberOfLines={1}
+          >
+            {emailUsuario}
+          </Texto>
+
+          <View
+            style={[estilos.estado, { backgroundColor: colores.exitoSuave }]}
+          >
+            <Ionicons name="checkmark-circle" size={16} color={colores.exito} />
+            <Texto
+              style={{ fontSize: 13, fontWeight: "700", color: colores.exito }}
+            >
+              Sesión activa
+            </Texto>
+          </View>
+        </View>
+
+        {/* Tu experiencia */}
+        <Texto style={estilos.seccion}>Tu experiencia</Texto>
+
+        <AccesoFila
+          icono="heart-outline"
+          titulo="Mis favoritos"
+          subtitulo="Tus lugares preferidos de Colón"
+          alPresionar={() => router.push("/favoritos")}
+        />
+
+        <AccesoFila
+          icono="calendar-outline"
+          titulo="Mis eventos"
+          subtitulo="Los eventos a los que querés ir"
+          alPresionar={() => router.push("/eventos-guardados")}
+        />
+
+        <AccesoFila
+          icono="footsteps-outline"
+          titulo="Mi recorrido"
+          subtitulo="Reviví los lugares que visitaste"
+          alPresionar={() => router.push("/(tabs)/recorrido")}
+        />
+
+        {/* Cuenta y seguridad */}
+        <Texto style={estilos.seccion}>Cuenta y seguridad</Texto>
+
+        <View
+          style={[
+            estilos.tarjetaDatos,
+            SOMBRA,
+            { backgroundColor: colores.superficie },
+          ]}
+        >
+          <FilaDato
+            icono="mail-outline"
+            titulo="Correo electrónico"
+            valor={emailUsuario}
+            primera
+          />
+          <FilaDato
+            icono="lock-closed-outline"
+            titulo="Protección de sesión"
+            valor="Bloqueo de sesión con opción de desbloqueo"
+          />
+        </View>
+
+        <View style={estilos.cerrar}>
+          <Boton
+            titulo="Cerrar sesión"
+            variante="peligro"
+            onPress={confirmarCierreSesion}
+          />
+        </View>
+
+        <Texto
+          style={{
+            fontSize: 12,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
           Mi Ciudad Colón · Descubrí, explorá y recordá
-        </Text>
+        </Texto>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  contenido: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 14,
-  },
+const estilos = StyleSheet.create({
+  safeArea: { flex: 1 },
+  contenido: { padding: 20, paddingBottom: 40, gap: 14 },
   centro: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
-    backgroundColor: "#F8FAFC",
   },
-  textoSecundario: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#64748B",
-  },
-  encabezadoCuenta: {
-    backgroundColor: AZUL,
-    borderRadius: 20,
-    padding: 22,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 8,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFFFFF",
+  textos: { flex: 1, gap: 2 },
+  iconoTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  inicialAvatar: {
-    fontSize: 28,
+  titulo: {
+    fontSize: 26,
+    lineHeight: 34,
     fontWeight: "700",
-    color: AZUL,
+    textAlign: "center",
   },
-  datosCuenta: {
-    flex: 1,
-    gap: 5,
+  seccion: { fontSize: 18, fontWeight: "700", marginTop: 12 },
+
+  // Con sesión
+  perfil: {
+    borderRadius: 26,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    gap: 6,
   },
-  saludo: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
   },
-  email: {
-    fontSize: 14,
-    color: "#E0F2FE",
+  inicial: { fontSize: 36, lineHeight: 44, fontWeight: "700" },
+  saludo: { fontSize: 22, lineHeight: 30, fontWeight: "700" },
+  estado: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 8,
   },
-  estadoCuenta: {
-    fontSize: 13,
-    color: "#BBF7D0",
-    fontWeight: "600",
-  },
-  tituloSeccion: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#17202A",
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  tarjetaAcceso: {
-    minHeight: 86,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+  acceso: {
+    minHeight: 80,
+    borderRadius: 22,
     padding: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
-  iconoAccesoRosa: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#FFF1F2",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconoAccesoAzul: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#E0F2FE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconoAcceso: {
-    fontSize: 27,
-    color: AZUL,
-  },
-  textosAcceso: {
-    flex: 1,
-    gap: 4,
-  },
-  tituloAcceso: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  subtituloAcceso: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: "#64748B",
-  },
-  flecha: {
-    fontSize: 30,
-    color: "#94A3B8",
-  },
-  tarjetaInformacion: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  filaInformacion: {
+  tarjetaDatos: { borderRadius: 22, paddingHorizontal: 16 },
+  filaDato: {
     minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     paddingVertical: 12,
   },
-  iconoInformacion: {
-    fontSize: 22,
-    color: AZUL,
-    width: 30,
-    textAlign: "center",
-  },
-  tituloInformacion: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  separador: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  botonCerrar: {
-    minHeight: 52,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: 14,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textoBotonCerrar: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#B42318",
-  },
-  pie: {
-    textAlign: "center",
-    color: "#94A3B8",
-    fontSize: 12,
-    marginTop: 16,
-  },
-  bienvenida: {
-    alignItems: "center",
-    paddingVertical: 32,
-    gap: 14,
-  },
+  cerrar: { marginTop: 10, marginBottom: 4 },
+
+  // Sin sesión
+  bienvenida: { alignItems: "center", paddingVertical: 24, gap: 12 },
   avatarInvitado: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#E0F2FE",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconoAvatar: {
-    fontSize: 43,
-  },
-  tituloBienvenida: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#17202A",
-    textAlign: "center",
-  },
-  textoBienvenida: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#64748B",
-    textAlign: "center",
-  },
-  tarjetaInvitado: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 22,
-    gap: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  tituloTarjeta: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  botonPrincipal: {
-    minHeight: 52,
-    borderRadius: 12,
-    backgroundColor: AZUL,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textoBotonPrincipal: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  botonSecundario: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: AZUL,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textoBotonSecundario: {
-    color: AZUL,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  enlaceExplorar: {
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textoExplorar: {
-    color: AZUL,
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  tarjeta: { borderRadius: 22, padding: 18, gap: 16, marginBottom: 6 },
+  beneficio: { flexDirection: "row", alignItems: "center", gap: 14 },
 });

@@ -1,22 +1,27 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
+  View,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
+
 import { registrarUsuarioApi } from "../api/auth";
 import { CampoFormulario } from "../components/CampoFormulario";
+import Aviso from "../components/ui/Aviso";
+import Boton from "../components/ui/Boton";
+import Logo from "../components/ui/Logo";
+import Texto from "../components/ui/Texto";
 import { useSesion } from "../contextos/SesionContext";
-import axios from "axios";
+import { useTema } from "../tema/TemaContext";
+import { fuentes } from "../tema/tipografia";
 
 const esquemaRegistro = z
   .object({
@@ -39,6 +44,7 @@ const esquemaRegistro = z
 type DatosRegistro = z.infer<typeof esquemaRegistro>;
 
 export default function RegistroScreen() {
+  const { colores } = useTema();
   const { iniciarSesion } = useSesion();
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
 
@@ -88,20 +94,26 @@ export default function RegistroScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={[estilos.safeArea, { backgroundColor: colores.fondo }]}
+    >
       <KeyboardAvoidingView
-        style={styles.container}
+        style={estilos.contenedor}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
-          contentContainerStyle={styles.contenido}
+          contentContainerStyle={estilos.contenido}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.titulo}>Crear cuenta</Text>
-
-          <Text style={styles.subtitulo}>
-            Guardá tus favoritos y tu recorrido en tu cuenta.
-          </Text>
+          <View style={estilos.encabezado}>
+            <Logo tamano={64} />
+            <Texto style={estilos.titulo}>Crear cuenta</Texto>
+            <Texto
+              style={[estilos.subtitulo, { color: colores.textoSecundario }]}
+            >
+              Guardá tus favoritos y tu recorrido en tu cuenta.
+            </Texto>
+          </View>
 
           <Controller
             control={control}
@@ -167,21 +179,19 @@ export default function RegistroScreen() {
             )}
           />
 
-          {errorEnvio && <Text style={styles.error}>{errorEnvio}</Text>}
+          {errorEnvio ? <Aviso mensaje={errorEnvio} /> : null}
 
-          <Pressable
-            style={[styles.boton, isSubmitting && styles.botonDeshabilitado]}
+          <Boton
+            titulo="Crear cuenta"
+            cargando={isSubmitting}
             onPress={handleSubmit(enviar)}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-            accessibilityLabel="Crear cuenta"
-          >
-            <Text style={styles.textoBoton}>
-              {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
-            </Text>
-          </Pressable>
+          />
 
-          <Link href="/login" replace style={styles.enlace}>
+          <Link
+            href="/login"
+            replace
+            style={[estilos.enlace, { color: colores.primarioFuerte }]}
+          >
             ¿Ya tenés cuenta? Iniciá sesión
           </Link>
         </ScrollView>
@@ -190,55 +200,22 @@ export default function RegistroScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  container: {
-    flex: 1,
-  },
+const estilos = StyleSheet.create({
+  safeArea: { flex: 1 },
+  contenedor: { flex: 1 },
   contenido: {
     flexGrow: 1,
     justifyContent: "center",
     padding: 24,
-    gap: 18,
+    gap: 16,
   },
-  titulo: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-  subtitulo: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#5F6B76",
-  },
-  boton: {
-    minHeight: 52,
-    backgroundColor: "#075985",
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-  textoBoton: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  error: {
-    color: "#B42318",
-    fontSize: 14,
-  },
+  encabezado: { alignItems: "center", gap: 10, marginBottom: 4 },
+  titulo: { fontSize: 28, lineHeight: 36, fontWeight: "700" },
+  subtitulo: { fontSize: 15, lineHeight: 22, textAlign: "center" },
   enlace: {
-    color: "#075985",
-    fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fuentes.semibold,
+    fontSize: 15,
     textAlign: "center",
+    paddingVertical: 12,
   },
 });

@@ -3,6 +3,11 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import Boton from "../../components/ui/Boton";
+import Texto from "../../components/ui/Texto";
+import { useTema } from "../../tema/TemaContext";
+import { fuentes } from "../../tema/tipografia";
+import { obtenerInfoCategoria } from "../../utils/categorias";
 
 import {
   ActivityIndicator,
@@ -14,9 +19,8 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 
 import EscanerQR from "../../components/EscanerQR";
@@ -26,7 +30,7 @@ import {
   eliminarFotoVisita,
   guardarFotoVisita,
 } from "../../servicios/fotosVisitas";
-import { obtenerLugarPorQr, obtenerLugares } from "../../servicios/lugares";
+import { obtenerLugares, obtenerLugarPorQr } from "../../servicios/lugares";
 
 import {
   comprobarVisitaGps,
@@ -40,9 +44,9 @@ import {
   registrarVisita,
 } from "../../servicios/visitas";
 
+import { confirmarAccion } from "../../servicios/haptica";
 import { Lugar } from "../../tipos/lugar";
 import { OrigenVisita, Visita } from "../../tipos/visita";
-import { confirmarAccion } from "../../servicios/haptica";
 
 type EstadoPantalla =
   | { fase: "cargando" }
@@ -81,6 +85,7 @@ function formatearDistancia(metros: number): string {
 }
 
 export default function RecorridoScreen() {
+  const { colores } = useTema();
   const { sesion, cargando: cargandoSesion } = useSesion();
 
   // Detectar conectividad mediante expo-network.
@@ -208,16 +213,14 @@ export default function RecorridoScreen() {
   }
 
   async function procesarQr(codigo: string): Promise<boolean> {
-     
     const lugar = await obtenerLugarPorQr(codigo);
-    
+
     if (!lugar) {
-       
       // El escáner mostrará el mensaje de error
       // y permitirá volver a escanear.
       return false;
     }
-    
+
     // QR válido: cerramos el escáner.
     setEscanerVisible(false);
 
@@ -533,187 +536,333 @@ export default function RecorridoScreen() {
   // --------------------------------------------------
   // Estados de carga y error
   // --------------------------------------------------
-
   if (estado.fase === "cargando") {
     return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color="#075985" />
+      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+        <ActivityIndicator size="large" color={colores.primarioFuerte} />
 
-        <Text style={styles.textoSecundario}>Cargando tu recorrido...</Text>
+        <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
+          Cargando tu recorrido...
+        </Texto>
       </View>
     );
   }
 
   if (estado.fase === "error") {
     return (
-      <View style={styles.centro}>
-        <Ionicons name="alert-circle-outline" size={42} color="#B42318" />
+      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
+        <View
+          style={[
+            estilos.circuloEstado,
+            { backgroundColor: colores.errorSuave },
+          ]}
+        >
+          <Ionicons name="alert-circle" size={32} color={colores.error} />
+        </View>
 
-        <Text style={styles.textoSecundario}>{estado.mensaje}</Text>
+        <Texto
+          style={{
+            fontSize: 15,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
+          {estado.mensaje}
+        </Texto>
 
-        <Pressable style={styles.botonPrincipal} onPress={cargarDatos}>
-          <Text style={styles.textoBotonPrincipal}>Reintentar</Text>
-        </Pressable>
+        <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+          <Boton titulo="Reintentar" onPress={() => void cargarDatos()} />
+        </View>
       </View>
     );
   }
 
   const { lugares, visitas } = estado;
 
+  const red = {
+    conectado: {
+      fondo: colores.exitoSuave,
+      color: colores.exito,
+      icono: "wifi" as NombreIcono,
+      titulo: "Con conexión",
+      detalle: "Tus visitas se guardan en este dispositivo.",
+    },
+    "sin-conexion": {
+      fondo: colores.advertenciaSuave,
+      color: colores.advertencia,
+      icono: "cloud-offline" as NombreIcono,
+      titulo: "Sin conexión",
+      detalle: "Podés seguir registrando visitas sin Internet.",
+    },
+    comprobando: {
+      fondo: colores.primarioSuave,
+      color: colores.primarioFuerte,
+      icono: "sync" as NombreIcono,
+      titulo: "Comprobando conexión...",
+      detalle: "Consultando el estado de la red.",
+    },
+  }[conectividad];
+
+  const iconosOrigen: Record<OrigenVisita, NombreIcono> = {
+    qr: "qr-code",
+    gps: "navigate",
+    manual: "create",
+  };
+
+  const bloqueado = guardando || seleccionandoFoto;
+
   return (
-    <View style={styles.contenedor}>
+    <View style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
       <ScrollView
-        contentContainerStyle={styles.contenido}
+        contentContainerStyle={estilos.contenido}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Encabezado */}
-        <View style={styles.encabezado}>
-          <Text style={styles.titulo}>Mi recorrido</Text>
-
-          <Text style={styles.descripcion}>
-            Registrá tus visitas y guardá tus recuerdos de Colón.
-          </Text>
-        </View>
-
-        {/* ---------------------------------------- */}
-        {/* Estado de conectividad                  */}
-        {/* ---------------------------------------- */}
-
-        <View
-          style={[
-            styles.tarjetaConexion,
-            conectividad === "conectado"
-              ? styles.conexionActiva
-              : conectividad === "sin-conexion"
-                ? styles.conexionInactiva
-                : styles.conexionComprobando,
-          ]}
+        <Texto
+          style={{
+            fontSize: 15,
+            lineHeight: 22,
+            color: colores.textoSecundario,
+          }}
         >
-          {conectividad === "comprobando" ? (
-            <ActivityIndicator size="small" color="#075985" />
-          ) : (
-            <Ionicons
-              name={
-                conectividad === "conectado"
-                  ? "wifi-outline"
-                  : "cloud-offline-outline"
-              }
-              size={23}
-              color={conectividad === "conectado" ? "#15803D" : "#B45309"}
-            />
-          )}
+          Registrá tus visitas y guardá tus recuerdos de Colón.
+        </Texto>
 
-          <View style={styles.informacionConexion}>
-            <Text
-              style={[
-                styles.tituloConexion,
-                conectividad === "sin-conexion"
-                  ? styles.textoConexionInactiva
-                  : styles.textoConexionActiva,
-              ]}
+        {/* Estado de conectividad */}
+        <View style={[estilos.tarjetaConexion, { backgroundColor: red.fondo }]}>
+          <View
+            style={[
+              estilos.circuloConexion,
+              { backgroundColor: colores.superficie },
+            ]}
+          >
+            {conectividad === "comprobando" ? (
+              <ActivityIndicator size="small" color={red.color} />
+            ) : (
+              <Ionicons name={red.icono} size={22} color={red.color} />
+            )}
+          </View>
+
+          <View style={{ flex: 1, gap: 2 }}>
+            <Texto
+              style={{ fontSize: 15, fontWeight: "700", color: red.color }}
             >
-              {conectividad === "comprobando"
-                ? "Comprobando conexión..."
-                : conectividad === "conectado"
-                  ? "Con conexión"
-                  : "Sin conexión"}
-            </Text>
-
-            <Text style={styles.descripcionConexion}>
-              {conectividad === "conectado"
-                ? "Tus visitas se guardan en este dispositivo."
-                : conectividad === "sin-conexion"
-                  ? "Podés seguir registrando visitas sin Internet."
-                  : "Consultando el estado de la red."}
-            </Text>
+              {red.titulo}
+            </Texto>
+            <Texto style={{ fontSize: 13, color: colores.textoSecundario }}>
+              {red.detalle}
+            </Texto>
           </View>
         </View>
 
-        {/* ---------------------------------------- */}
-        {/* Historial de visitas                    */}
-        {/* ---------------------------------------- */}
+        {/* Historial de visitas */}
+        <View style={estilos.seccion}>
+          <View style={estilos.encabezadoSeccion}>
+            <View
+              style={[
+                estilos.iconoSeccion,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="footsteps"
+                size={18}
+                color={colores.primarioFuerte}
+              />
+            </View>
 
-        <View style={styles.seccion}>
-          <View style={styles.encabezadoSeccion}>
-            <Ionicons name="footsteps-outline" size={23} color="#075985" />
-
-            <Text style={styles.tituloSeccion}>Lugares visitados</Text>
+            <Texto style={{ flex: 1, fontSize: 20, fontWeight: "700" }}>
+              Lugares visitados
+            </Texto>
 
             {sesion && visitas.length > 0 && (
-              <View style={styles.contador}>
-                <Text style={styles.textoContador}>{visitas.length}</Text>
+              <View
+                style={[
+                  estilos.contador,
+                  { backgroundColor: colores.primario },
+                ]}
+              >
+                <Texto
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: colores.sobrePrimario,
+                  }}
+                >
+                  {visitas.length}
+                </Texto>
               </View>
             )}
           </View>
 
           {!sesion ? (
-            <View style={styles.tarjetaVacia}>
-              <Text style={styles.textoSecundario}>
-                Iniciá sesión para guardar y consultar tus visitas.
-              </Text>
-
-              <Pressable
-                style={styles.botonPrincipal}
-                onPress={() => router.push("/login")}
+            <View
+              style={[
+                estilos.tarjetaVacia,
+                SOMBRA,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <View
+                style={[
+                  estilos.circuloEstado,
+                  { backgroundColor: colores.primarioSuave },
+                ]}
               >
-                <Text style={styles.textoBotonPrincipal}>Iniciar sesión</Text>
-              </Pressable>
+                <Ionicons
+                  name="person-circle-outline"
+                  size={34}
+                  color={colores.primarioFuerte}
+                />
+              </View>
+
+              <Texto
+                style={{
+                  fontSize: 15,
+                  lineHeight: 22,
+                  color: colores.textoSecundario,
+                  textAlign: "center",
+                }}
+              >
+                Iniciá sesión para guardar y consultar tus visitas.
+              </Texto>
+
+              <View style={{ alignSelf: "stretch" }}>
+                <Boton
+                  titulo="Iniciar sesión"
+                  onPress={() => router.push("/login")}
+                />
+              </View>
             </View>
           ) : visitas.length === 0 ? (
-            <View style={styles.tarjetaVacia}>
-              <Ionicons name="map-outline" size={34} color="#94A3B8" />
+            <View
+              style={[
+                estilos.tarjetaVacia,
+                SOMBRA,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <View
+                style={[
+                  estilos.circuloEstado,
+                  { backgroundColor: colores.primarioSuave },
+                ]}
+              >
+                <Ionicons
+                  name="map-outline"
+                  size={34}
+                  color={colores.primarioFuerte}
+                />
+              </View>
 
-              <Text style={styles.textoSecundario}>
+              <Texto
+                style={{
+                  fontSize: 15,
+                  color: colores.textoSecundario,
+                  textAlign: "center",
+                }}
+              >
                 Todavía no registraste ninguna visita.
-              </Text>
+              </Texto>
             </View>
           ) : (
             visitas.map((visita) => {
               const lugar = lugares.find((item) => item.id === visita.lugarId);
 
               return (
-                <View key={visita.id} style={styles.tarjetaVisita}>
+                <View
+                  key={visita.id}
+                  style={[
+                    estilos.tarjeta,
+                    SOMBRA,
+                    { backgroundColor: colores.superficie },
+                  ]}
+                >
                   {visita.fotoUri ? (
                     <Image
-                      source={{
-                        uri: visita.fotoUri,
-                      }}
-                      style={styles.fotoHistorial}
+                      source={{ uri: visita.fotoUri }}
+                      style={estilos.fotoHistorial}
                       contentFit="cover"
                     />
                   ) : (
-                    <View style={styles.iconoHistorial}>
+                    <View
+                      style={[
+                        estilos.fotoHistorial,
+                        estilos.iconoHistorial,
+                        { backgroundColor: colores.exitoSuave },
+                      ]}
+                    >
                       <Ionicons
                         name="checkmark-circle"
-                        size={29}
-                        color="#16A34A"
+                        size={30}
+                        color={colores.exito}
                       />
                     </View>
                   )}
 
-                  <View style={styles.informacionVisita}>
-                    <Text style={styles.nombreLugar}>
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Texto
+                      numberOfLines={2}
+                      style={{ fontSize: 16, fontWeight: "700" }}
+                    >
                       {lugar?.nombre ?? "Lugar no disponible"}
-                    </Text>
+                    </Texto>
 
-                    <Text style={styles.fecha}>
-                      {formatearFecha(visita.fechaHora)}
-                    </Text>
+                    <View style={estilos.fila}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={14}
+                        color={colores.textoSecundario}
+                      />
+                      <Texto
+                        style={{ fontSize: 13, color: colores.textoSecundario }}
+                      >
+                        {formatearFecha(visita.fechaHora)}
+                      </Texto>
+                    </View>
 
-                    <Text style={styles.origenVisita}>
-                      {textoOrigen(visita.origen)}
-                    </Text>
+                    <View style={estilos.filaPastillas}>
+                      <Pastilla
+                        icono={iconosOrigen[visita.origen]}
+                        texto={textoOrigen(visita.origen)}
+                        fondo={colores.primarioSuave}
+                        color={colores.primarioFuerte}
+                      />
+                      <Pastilla
+                        icono={
+                          visita.sincronizada
+                            ? "cloud-done-outline"
+                            : "cloud-upload-outline"
+                        }
+                        texto={
+                          visita.sincronizada
+                            ? "Sincronizada"
+                            : "Guardada en este dispositivo"
+                        }
+                        fondo={
+                          visita.sincronizada
+                            ? colores.exitoSuave
+                            : colores.advertenciaSuave
+                        }
+                        color={
+                          visita.sincronizada
+                            ? colores.exito
+                            : colores.advertencia
+                        }
+                      />
+                    </View>
 
-                    {visita.nota && (
-                      <Text style={styles.notaVisita}>{visita.nota}</Text>
-                    )}
-
-                    <Text style={styles.estadoSincronizacion}>
-                      {visita.sincronizada
-                        ? "Sincronizada"
-                        : "Guardada en este dispositivo"}
-                    </Text>
+                    {visita.nota ? (
+                      <Texto
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 20,
+                          color: colores.textoSecundario,
+                        }}
+                      >
+                        {visita.nota}
+                      </Texto>
+                    ) : null}
                   </View>
                 </View>
               );
@@ -721,120 +870,210 @@ export default function RecorridoScreen() {
           )}
         </View>
 
-        {/* ---------------------------------------- */}
-        {/* Registrar una visita                    */}
-        {/* ---------------------------------------- */}
+        {/* Registrar una visita */}
+        <View style={estilos.seccion}>
+          <View style={estilos.encabezadoSeccion}>
+            <View
+              style={[
+                estilos.iconoSeccion,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="location"
+                size={18}
+                color={colores.primarioFuerte}
+              />
+            </View>
 
-        <View style={styles.seccion}>
-          <View style={styles.encabezadoSeccion}>
-            <Ionicons name="location-outline" size={23} color="#075985" />
-
-            <Text style={styles.tituloSeccion}>Registrar una visita</Text>
+            <Texto style={{ flex: 1, fontSize: 20, fontWeight: "700" }}>
+              Registrar una visita
+            </Texto>
           </View>
 
-          <Text style={styles.descripcionSeccion}>
+          <Texto
+            style={{
+              fontSize: 14,
+              lineHeight: 21,
+              color: colores.textoSecundario,
+            }}
+          >
             Registrá una visita manualmente, mediante QR o comprobando tu
             ubicación GPS.
-          </Text>
+          </Texto>
 
           {/* Escáner QR */}
           <Pressable
-            style={styles.botonQr}
+            style={[estilos.botonQr, { backgroundColor: colores.primario }]}
             onPress={abrirEscaner}
-            accessibilityRole="button"
+            role="button"
             accessibilityLabel="Escanear código QR"
           >
-            <Ionicons name="qr-code-outline" size={24} color="#075985" />
+            <Ionicons name="qr-code" size={22} color={colores.sobrePrimario} />
 
-            <Text style={styles.textoBotonQr}>Escanear código QR</Text>
+            <Texto
+              style={{
+                fontSize: 16,
+                fontWeight: "700",
+                color: colores.sobrePrimario,
+              }}
+            >
+              Escanear código QR
+            </Texto>
           </Pressable>
 
           {/* Lugares disponibles */}
           {lugares.length === 0 ? (
-            <View style={styles.tarjetaVacia}>
-              <Text style={styles.textoSecundario}>
+            <View
+              style={[
+                estilos.tarjetaVacia,
+                SOMBRA,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
                 No hay lugares disponibles.
-              </Text>
+              </Texto>
             </View>
           ) : (
-            lugares.map((lugar) => (
-              <View key={lugar.id} style={styles.tarjetaLugar}>
-                <View style={styles.filaLugar}>
-                  <View style={styles.iconoLugar}>
-                    <Ionicons
-                      name="location-outline"
-                      size={22}
-                      color="#075985"
-                    />
+            lugares.map((lugar) => {
+              const { icono, color } = obtenerInfoCategoria(lugar.categoriaId);
+
+              return (
+                <View
+                  key={lugar.id}
+                  style={[
+                    estilos.tarjetaLugar,
+                    SOMBRA,
+                    { backgroundColor: colores.superficie },
+                  ]}
+                >
+                  <View style={estilos.filaLugar}>
+                    <View
+                      style={[
+                        estilos.iconoLugar,
+                        { backgroundColor: `${color}20` },
+                      ]}
+                    >
+                      <Ionicons name={icono} size={22} color={color} />
+                    </View>
+
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Texto style={{ fontSize: 16, fontWeight: "700" }}>
+                        {lugar.nombre}
+                      </Texto>
+
+                      <Texto
+                        numberOfLines={2}
+                        style={{ fontSize: 13, color: colores.textoSecundario }}
+                      >
+                        {lugar.direccion}
+                      </Texto>
+                    </View>
                   </View>
 
-                  <View style={styles.informacionLugar}>
-                    <Text style={styles.nombreLugar}>{lugar.nombre}</Text>
-
-                    <Text style={styles.direccion} numberOfLines={2}>
-                      {lugar.direccion}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.accionesLugar}>
-                  {/* Registro manual */}
-                  <Pressable
-                    style={styles.botonManual}
-                    onPress={() => abrirRegistro(lugar)}
-                    disabled={comprobandoGps !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Registrar manualmente una visita a ${lugar.nombre}`}
-                  >
-                    <Ionicons name="create-outline" size={19} color="#075985" />
-
-                    <Text style={styles.textoBotonManual}>Manual</Text>
-                  </Pressable>
-
-                  {/* Registro GPS */}
-                  <Pressable
-                    style={[
-                      styles.botonGps,
-                      comprobandoGps !== null && styles.botonDeshabilitado,
-                    ]}
-                    onPress={() => registrarConGps(lugar)}
-                    disabled={comprobandoGps !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Comprobar ubicación GPS para ${lugar.nombre}`}
-                  >
-                    {comprobandoGps === lugar.id ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
+                  <View style={estilos.accionesLugar}>
+                    {/* Registro manual */}
+                    <Pressable
+                      style={[
+                        estilos.botonAccion,
+                        { backgroundColor: colores.primarioSuave },
+                        comprobandoGps !== null && estilos.botonDeshabilitado,
+                      ]}
+                      onPress={() => abrirRegistro(lugar)}
+                      disabled={comprobandoGps !== null}
+                      role="button"
+                      accessibilityLabel={`Registrar manualmente una visita a ${lugar.nombre}`}
+                    >
                       <Ionicons
-                        name="navigate-outline"
-                        size={19}
-                        color="#FFFFFF"
+                        name="create-outline"
+                        size={18}
+                        color={colores.primarioFuerte}
                       />
-                    )}
 
-                    <Text style={styles.textoBotonGps}>
-                      {comprobandoGps === lugar.id
-                        ? "Ubicando..."
-                        : "Registrar con GPS"}
-                    </Text>
-                  </Pressable>
+                      <Texto
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: colores.primarioFuerte,
+                        }}
+                      >
+                        Manual
+                      </Texto>
+                    </Pressable>
+
+                    {/* Registro GPS */}
+                    <Pressable
+                      style={[
+                        estilos.botonAccion,
+                        { backgroundColor: colores.primario, flex: 1.4 },
+                        comprobandoGps !== null && estilos.botonDeshabilitado,
+                      ]}
+                      onPress={() => registrarConGps(lugar)}
+                      disabled={comprobandoGps !== null}
+                      role="button"
+                      accessibilityLabel={`Comprobar ubicación GPS para ${lugar.nombre}`}
+                    >
+                      {comprobandoGps === lugar.id ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colores.sobrePrimario}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="navigate-outline"
+                          size={18}
+                          color={colores.sobrePrimario}
+                        />
+                      )}
+
+                      <Texto
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: colores.sobrePrimario,
+                        }}
+                      >
+                        {comprobandoGps === lugar.id
+                          ? "Ubicando..."
+                          : "Registrar con GPS"}
+                      </Texto>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
 
-          <Text style={styles.avisoGps}>
-            Para registrar con GPS necesitás estar a
-            {` ${RADIO_VISITA_GPS_METROS} metros `}o menos del lugar. La
-            ubicación se consulta únicamente cuando tocás el botón.
-          </Text>
+          <View
+            style={[
+              estilos.avisoGps,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="information-circle"
+              size={20}
+              color={colores.primarioFuerte}
+            />
+
+            <Texto
+              style={{
+                flex: 1,
+                fontSize: 13,
+                lineHeight: 19,
+                color: colores.textoSecundario,
+              }}
+            >
+              Para registrar con GPS necesitás estar a
+              {` ${RADIO_VISITA_GPS_METROS} metros `}o menos del lugar. La
+              ubicación se consulta únicamente cuando tocás el botón.
+            </Texto>
+          </View>
         </View>
       </ScrollView>
 
-      {/* ---------------------------------------- */}
-      {/* Modal de confirmación                   */}
-      {/* ---------------------------------------- */}
-
+      {/* Modal de confirmación */}
       <Modal
         visible={modalVisible}
         transparent
@@ -842,111 +1081,206 @@ export default function RecorridoScreen() {
         onRequestClose={cerrarModal}
       >
         <KeyboardAvoidingView
-          style={styles.fondoModal}
+          style={estilos.fondoModal}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView
-            contentContainerStyle={styles.modalScroll}
+            contentContainerStyle={estilos.modalScroll}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.contenidoModal}>
+            <View
+              style={[
+                estilos.contenidoModal,
+                { backgroundColor: colores.superficie },
+              ]}
+            >
+              <View
+                style={[estilos.manija, { backgroundColor: colores.borde }]}
+              />
+
               {/* Encabezado */}
-              <View style={styles.encabezadoModal}>
-                <Text style={styles.tituloModal}>Confirmar visita</Text>
+              <View style={estilos.encabezadoModal}>
+                <Texto style={{ flex: 1, fontSize: 22, fontWeight: "700" }}>
+                  Confirmar visita
+                </Texto>
 
                 <Pressable
                   onPress={cerrarModal}
-                  disabled={guardando || seleccionandoFoto}
-                  accessibilityRole="button"
+                  disabled={bloqueado}
+                  hitSlop={10}
+                  style={[
+                    estilos.botonCerrar,
+                    { backgroundColor: colores.primarioSuave },
+                  ]}
+                  role="button"
                   accessibilityLabel="Cerrar formulario"
                 >
-                  <Ionicons name="close" size={26} color="#64748B" />
+                  <Ionicons
+                    name="close"
+                    size={20}
+                    color={colores.primarioFuerte}
+                  />
                 </Pressable>
               </View>
 
-              <Text style={styles.nombreModal}>
+              <Texto style={{ fontSize: 18, fontWeight: "700" }}>
                 {lugarSeleccionado?.nombre}
-              </Text>
+              </Texto>
 
-              <Text style={styles.origenModal}>
-                {textoOrigen(origenRegistro)}
-              </Text>
+              <View style={estilos.filaPastillas}>
+                <Pastilla
+                  icono={iconosOrigen[origenRegistro]}
+                  texto={textoOrigen(origenRegistro)}
+                  fondo={colores.primarioSuave}
+                  color={colores.primarioFuerte}
+                />
+              </View>
 
               {/* Distancia GPS */}
               {origenRegistro === "gps" && distanciaGps !== null && (
-                <View style={styles.confirmacionGps}>
-                  <Ionicons name="checkmark-circle" size={21} color="#15803D" />
+                <View
+                  style={[
+                    estilos.confirmacionGps,
+                    { backgroundColor: colores.exitoSuave },
+                  ]}
+                >
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={colores.exito}
+                  />
 
-                  <Text style={styles.textoConfirmacionGps}>
+                  <Texto
+                    style={{
+                      flex: 1,
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: colores.exito,
+                    }}
+                  >
                     Ubicación verificada: estás a
                     {` ${formatearDistancia(distanciaGps)} `}
                     del lugar.
-                  </Text>
+                  </Texto>
                 </View>
               )}
 
               {/* Fotografía */}
-              <Text style={styles.etiqueta}>Fotografía (opcional)</Text>
+              <Texto style={estilos.etiquetaCampo}>Fotografía (opcional)</Texto>
 
               {fotoTemporal ? (
-                <View style={styles.vistaPrevia}>
+                <View style={estilos.vistaPrevia}>
                   <ImagenNativa
                     key={fotoTemporal}
-                    source={{
-                      uri: fotoTemporal,
-                    }}
-                    style={styles.imagenPrevia}
+                    source={{ uri: fotoTemporal }}
+                    style={estilos.imagenPrevia}
                     resizeMode="cover"
                   />
 
                   <Pressable
-                    style={styles.botonQuitarFoto}
+                    style={[
+                      estilos.botonQuitarFoto,
+                      { backgroundColor: colores.superficie },
+                    ]}
                     onPress={() => setFotoTemporal(null)}
-                    disabled={guardando || seleccionandoFoto}
-                    accessibilityRole="button"
+                    disabled={bloqueado}
+                    role="button"
                     accessibilityLabel="Quitar fotografía"
                   >
-                    <Ionicons name="close-circle" size={30} color="#B42318" />
+                    <Ionicons
+                      name="close-circle"
+                      size={30}
+                      color={colores.error}
+                    />
                   </Pressable>
                 </View>
               ) : (
-                <View style={styles.placeholderFoto}>
-                  <Ionicons name="image-outline" size={34} color="#94A3B8" />
+                <View
+                  style={[
+                    estilos.placeholderFoto,
+                    {
+                      backgroundColor: colores.primarioSuave,
+                      borderColor: colores.borde,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={34}
+                    color={colores.primarioFuerte}
+                  />
 
-                  <Text style={styles.textoPlaceholder}>Sin fotografía</Text>
+                  <Texto
+                    style={{ fontSize: 14, color: colores.textoSecundario }}
+                  >
+                    Sin fotografía
+                  </Texto>
                 </View>
               )}
 
               {/* Cámara y galería */}
-              <View style={styles.filaFotos}>
+              <View style={estilos.filaFotos}>
                 <Pressable
-                  style={styles.botonFoto}
+                  style={[
+                    estilos.botonFoto,
+                    { borderColor: colores.borde },
+                    bloqueado && estilos.botonDeshabilitado,
+                  ]}
                   onPress={sacarFoto}
-                  disabled={guardando || seleccionandoFoto}
+                  disabled={bloqueado}
+                  role="button"
+                  accessibilityLabel="Sacar una foto con la cámara"
                 >
-                  <Ionicons name="camera-outline" size={22} color="#075985" />
+                  <Ionicons
+                    name="camera"
+                    size={20}
+                    color={colores.primarioFuerte}
+                  />
 
-                  <Text style={styles.textoBotonFoto}>Cámara</Text>
+                  <Texto style={{ fontSize: 14, fontWeight: "700" }}>
+                    Cámara
+                  </Texto>
                 </Pressable>
 
                 <Pressable
-                  style={styles.botonFoto}
+                  style={[
+                    estilos.botonFoto,
+                    { borderColor: colores.borde },
+                    bloqueado && estilos.botonDeshabilitado,
+                  ]}
                   onPress={elegirFoto}
-                  disabled={guardando || seleccionandoFoto}
+                  disabled={bloqueado}
+                  role="button"
+                  accessibilityLabel="Elegir una foto de la galería"
                 >
-                  <Ionicons name="images-outline" size={22} color="#075985" />
+                  <Ionicons
+                    name="images"
+                    size={20}
+                    color={colores.primarioFuerte}
+                  />
 
-                  <Text style={styles.textoBotonFoto}>Galería</Text>
+                  <Texto style={{ fontSize: 14, fontWeight: "700" }}>
+                    Galería
+                  </Texto>
                 </Pressable>
               </View>
 
               {/* Nota */}
-              <Text style={styles.etiqueta}>Nota personal (opcional)</Text>
+              <Texto style={estilos.etiquetaCampo}>
+                Nota personal (opcional)
+              </Texto>
 
               <TextInput
-                style={styles.campoNota}
+                style={[
+                  estilos.campoNota,
+                  {
+                    borderColor: colores.borde,
+                    backgroundColor: colores.superficie,
+                    color: colores.texto,
+                  },
+                ]}
                 placeholder="¿Qué te pareció este lugar?"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colores.textoSecundario}
                 value={nota}
                 onChangeText={setNota}
                 multiline
@@ -955,32 +1289,31 @@ export default function RecorridoScreen() {
                 editable={!guardando}
               />
 
-              <Text style={styles.contadorNota}>{nota.length}/500</Text>
+              <Texto
+                style={{
+                  fontSize: 12,
+                  color: colores.textoSecundario,
+                  textAlign: "right",
+                }}
+              >
+                {nota.length}/500
+              </Texto>
 
               {/* Guardar */}
-              <Pressable
-                style={[
-                  styles.botonPrincipal,
-                  (guardando || seleccionandoFoto) && styles.botonDeshabilitado,
-                ]}
+              <Boton
+                titulo="Guardar visita"
+                cargando={guardando}
+                disabled={seleccionandoFoto}
                 onPress={guardarVisita}
-                disabled={guardando || seleccionandoFoto}
-              >
-                {guardando ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.textoBotonPrincipal}>Guardar visita</Text>
-                )}
-              </Pressable>
+              />
 
               {/* Cancelar */}
-              <Pressable
-                style={styles.botonCancelar}
+              <Boton
+                titulo="Cancelar"
+                variante="texto"
+                disabled={bloqueado}
                 onPress={cerrarModal}
-                disabled={guardando || seleccionandoFoto}
-              >
-                <Text style={styles.textoCancelar}>Cancelar</Text>
-              </Pressable>
+              />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -997,19 +1330,46 @@ export default function RecorridoScreen() {
 }
 
 // --------------------------------------------------
+// Componentes auxiliares
+// --------------------------------------------------
+
+type NombreIcono = React.ComponentProps<typeof Ionicons>["name"];
+
+interface PastillaProps {
+  icono: NombreIcono;
+  texto: string;
+  fondo: string;
+  color: string;
+}
+
+function Pastilla({ icono, texto, fondo, color }: PastillaProps) {
+  return (
+    <View style={[estilos.pastilla, { backgroundColor: fondo }]}>
+      <Ionicons name={icono} size={14} color={color} />
+
+      <Texto style={{ fontSize: 12, fontWeight: "600", color }}>{texto}</Texto>
+    </View>
+  );
+}
+
+// --------------------------------------------------
 // Estilos
 // --------------------------------------------------
 
-const styles = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
+const SOMBRA = {
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 3,
+} as const;
+
+const estilos = StyleSheet.create({
+  contenedor: { flex: 1 },
 
   contenido: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 36,
+    padding: 16,
+    paddingBottom: 32,
     gap: 20,
   },
 
@@ -1018,212 +1378,118 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    gap: 14,
-    backgroundColor: "#F8FAFC",
+    gap: 12,
   },
 
-  encabezado: {
-    gap: 6,
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
-
-  titulo: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#17202A",
-  },
-
-  descripcion: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#64748B",
-  },
-
-  // ----------------------------------------
-  // Conectividad
-  // ----------------------------------------
 
   tarjetaConexion: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 14,
-    padding: 13,
-    borderWidth: 1,
+    padding: 14,
+    borderRadius: 20,
   },
 
-  conexionActiva: {
-    backgroundColor: "#F0FDF4",
-    borderColor: "#BBF7D0",
+  circuloConexion: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  conexionInactiva: {
-    backgroundColor: "#FFFBEB",
-    borderColor: "#FDE68A",
-  },
-
-  conexionComprobando: {
-    backgroundColor: "#F0F9FF",
-    borderColor: "#BAE6FD",
-  },
-
-  informacionConexion: {
-    flex: 1,
-    gap: 3,
-  },
-
-  tituloConexion: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  textoConexionActiva: {
-    color: "#166534",
-  },
-
-  textoConexionInactiva: {
-    color: "#92400E",
-  },
-
-  descripcionConexion: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: "#64748B",
-  },
-
-  // ----------------------------------------
-  // Secciones
-  // ----------------------------------------
-
-  seccion: {
-    gap: 12,
-  },
+  seccion: { gap: 12 },
 
   encabezadoSeccion: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: 10,
   },
 
-  tituloSeccion: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#17202A",
+  iconoSeccion: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   contador: {
-    backgroundColor: "#E0F2FE",
-    borderRadius: 20,
     minWidth: 28,
     height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
-  },
-
-  textoContador: {
-    color: "#075985",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-
-  textoSecundario: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#64748B",
-    textAlign: "center",
-  },
-
-  descripcionSeccion: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#64748B",
   },
 
   tarjetaVacia: {
-    backgroundColor: "#FFFFFF",
-    padding: 22,
-    borderRadius: 16,
+    borderRadius: 20,
+    padding: 20,
     alignItems: "center",
     gap: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
 
-  // ----------------------------------------
-  // Historial
-  // ----------------------------------------
-
-  tarjetaVisita: {
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    borderRadius: 16,
+  tarjeta: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    gap: 14,
+    padding: 14,
+    borderRadius: 20,
   },
 
   fotoHistorial: {
-    width: 82,
-    height: 90,
-    borderRadius: 12,
-    backgroundColor: "#E2E8F0",
+    width: 76,
+    height: 76,
+    borderRadius: 16,
   },
 
   iconoHistorial: {
-    width: 44,
-    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  informacionVisita: {
-    flex: 1,
+  fila: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  filaPastillas: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+
+  pastilla: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
 
-  nombreLugar: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#17202A",
+  botonQr: {
+    minHeight: 54,
+    borderRadius: 27,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 20,
   },
-
-  fecha: {
-    fontSize: 13,
-    color: "#64748B",
-  },
-
-  origenVisita: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#075985",
-  },
-
-  notaVisita: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#334155",
-    marginTop: 3,
-  },
-
-  estadoSincronizacion: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 4,
-  },
-
-  // ----------------------------------------
-  // Lugares
-  // ----------------------------------------
 
   tarjetaLugar: {
-    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     padding: 14,
-    borderRadius: 16,
-    gap: 13,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    gap: 14,
   },
 
   filaLugar: {
@@ -1233,125 +1499,43 @@ const styles = StyleSheet.create({
   },
 
   iconoLugar: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#E0F2FE",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  informacionLugar: {
-    flex: 1,
-    gap: 3,
-  },
-
-  direccion: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: "#64748B",
   },
 
   accionesLugar: {
     flexDirection: "row",
-    gap: 9,
+    gap: 10,
   },
 
-  botonManual: {
+  botonAccion: {
     flex: 1,
     minHeight: 46,
-    backgroundColor: "#E0F2FE",
-    borderRadius: 11,
+    borderRadius: 23,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    paddingHorizontal: 9,
+    gap: 6,
+    paddingHorizontal: 12,
   },
 
-  textoBotonManual: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#075985",
-  },
-
-  botonGps: {
-    flex: 1.5,
-    minHeight: 46,
-    backgroundColor: "#075985",
-    borderRadius: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    paddingHorizontal: 9,
-  },
-
-  textoBotonGps: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    textAlign: "center",
-  },
+  botonDeshabilitado: { opacity: 0.55 },
 
   avisoGps: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: "#64748B",
-    textAlign: "center",
-    paddingHorizontal: 8,
-  },
-
-  // ----------------------------------------
-  // Botones principales
-  // ----------------------------------------
-
-  botonPrincipal: {
-    minHeight: 52,
-    backgroundColor: "#075985",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-
-  textoBotonPrincipal: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-
-  botonQr: {
-    minHeight: 52,
-    backgroundColor: "#E0F2FE",
-    borderWidth: 1,
-    borderColor: "#075985",
-    borderRadius: 14,
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "flex-start",
     gap: 10,
     padding: 14,
+    borderRadius: 16,
   },
 
-  textoBotonQr: {
-    color: "#075985",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  // ----------------------------------------
   // Modal
-  // ----------------------------------------
-
   fondoModal: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(20, 27, 45, 0.5)",
   },
 
   modalScroll: {
@@ -1360,84 +1544,80 @@ const styles = StyleSheet.create({
   },
 
   contenidoModal: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 22,
+    paddingTop: 12,
+    paddingBottom: 28,
     gap: 12,
+  },
+
+  manija: {
+    alignSelf: "center",
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    marginBottom: 6,
   },
 
   encabezadoModal: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
   },
 
-  tituloModal: {
-    fontSize: 21,
-    fontWeight: "700",
-    color: "#17202A",
+  botonCerrar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  nombreModal: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#075985",
+  confirmacionGps: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 16,
   },
 
-  origenModal: {
-    fontSize: 13,
-    color: "#64748B",
-  },
-
-  etiqueta: {
+  etiquetaCampo: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#334155",
+    fontWeight: "700",
     marginTop: 4,
   },
 
-  // ----------------------------------------
-  // Fotografías
-  // ----------------------------------------
-
   vistaPrevia: {
-    width: "100%",
     height: 200,
-    borderRadius: 14,
-    backgroundColor: "#F1F5F9",
-    position: "relative",
+    borderRadius: 20,
+    overflow: "hidden",
   },
 
   imagenPrevia: {
     width: "100%",
-    height: 200,
-    borderRadius: 14,
+    height: "100%",
   },
 
   botonQuitarFoto: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 2,
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   placeholderFoto: {
-    height: 100,
-    borderRadius: 14,
-    backgroundColor: "#F1F5F9",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    height: 120,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-  },
-
-  textoPlaceholder: {
-    color: "#64748B",
-    fontSize: 13,
   },
 
   filaFotos: {
@@ -1448,76 +1628,21 @@ const styles = StyleSheet.create({
   botonFoto: {
     flex: 1,
     minHeight: 48,
-    backgroundColor: "#F0F9FF",
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-    borderRadius: 12,
+    borderRadius: 24,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    padding: 10,
   },
-
-  textoBotonFoto: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#075985",
-  },
-
-  // ----------------------------------------
-  // Nota
-  // ----------------------------------------
 
   campoNota: {
-    minHeight: 85,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
-    padding: 12,
+    minHeight: 110,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontFamily: fuentes.regular,
     fontSize: 15,
-    color: "#17202A",
-    backgroundColor: "#F8FAFC",
-  },
-
-  contadorNota: {
-    textAlign: "right",
-    color: "#94A3B8",
-    fontSize: 12,
-  },
-
-  botonCancelar: {
-    minHeight: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  textoCancelar: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#64748B",
-  },
-
-  // ----------------------------------------
-  // Confirmación GPS
-  // ----------------------------------------
-
-  confirmacionGps: {
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-
-  textoConfirmacionGps: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-    fontWeight: "600",
-    color: "#166534",
   },
 });
