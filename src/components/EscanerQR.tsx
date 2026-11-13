@@ -105,7 +105,7 @@ export default function EscanerQR({
       }
 
       setMensajeError(
-        "No pudimos comprobar este código QR. Intentá nuevamente.",
+        "No pudimos comprobar este código. Revisá tu conexión e intentá nuevamente.",
       );
     } finally {
       if (sesionActual === sesionEscaneo.current) {

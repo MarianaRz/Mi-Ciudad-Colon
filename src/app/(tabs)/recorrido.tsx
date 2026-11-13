@@ -24,6 +24,7 @@ import {
   View,
 } from "react-native";
 
+import { obtenerLugaresApi, obtenerLugarPorQrApi } from "../../api/lugares";
 import EscanerQR from "../../components/EscanerQR";
 import { useSesion } from "../../contextos/SesionContext";
 import { useConectividad } from "../../hooks/useConectividad";
@@ -31,7 +32,6 @@ import {
   eliminarFotoVisita,
   guardarFotoVisita,
 } from "../../servicios/fotosVisitas";
-import { obtenerLugares, obtenerLugarPorQr } from "../../servicios/lugares";
 
 import {
   comprobarVisitaGps,
@@ -125,7 +125,7 @@ export default function RecorridoScreen() {
     try {
       setEstado({ fase: "cargando" });
 
-      const respuesta = await obtenerLugares();
+      const respuesta = await obtenerLugaresApi();
 
       const visitas = sesion ? await obtenerVisitas(sesion.email) : [];
 
@@ -214,11 +214,13 @@ export default function RecorridoScreen() {
   }
 
   async function procesarQr(codigo: string): Promise<boolean> {
-    const lugar = await obtenerLugarPorQr(codigo);
+    // Si falla la red y no hay catálogo guardado, el error sube al escáner,
+    // que muestra "No pudimos comprobar este código QR".
+    const lugar = await obtenerLugarPorQrApi(codigo);
 
     if (!lugar) {
-      // El escáner mostrará el mensaje de error
-      // y permitirá volver a escanear.
+      // QR ajeno o roto (QR_NO_RECONOCIDO): el escáner muestra el error
+      // y permite volver a escanear.
       return false;
     }
 
