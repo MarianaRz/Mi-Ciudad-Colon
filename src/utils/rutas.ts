@@ -1,4 +1,4 @@
-// src/utils/rutas.ts
+import { Linking, Platform } from "react-native";
 
 export interface PuntoMapa {
   latitude: number;
@@ -47,5 +47,34 @@ export async function obtenerRutaPorCalles(
   } catch (error) {
     console.error("Error al obtener ruta OSRM:", error);
     return null;
+  }
+}
+
+//desde aca pegue
+export async function abrirNavegacionExterna(
+  latitud: number,
+  longitud: number,
+  nombreLugar?: string
+) {
+  const etiqueta = encodeURIComponent(nombreLugar || "Destino");
+
+  // En iOS abre Apple Maps con navegación; en Android abre Google Maps
+  const url = Platform.select({
+    ios: `maps://app?daddr=${latitud},${longitud}&q=${etiqueta}`,
+    android: `google.navigation:q=${latitud},${longitud}`,
+  });
+
+  // Respaldo web universal por si el dispositivo no tiene la app nativa
+  const urlWeb = `https://google.com{latitud},${longitud}`;
+
+  try {
+    if (url && (await Linking.canOpenURL(url))) {
+      await Linking.openURL(url);
+    } else {
+      await Linking.openURL(urlWeb);
+    }
+  } catch (error) {
+    console.error("No se pudo abrir la app de mapas:", error);
+    await Linking.openURL(urlWeb);
   }
 }
