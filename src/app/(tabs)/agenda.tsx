@@ -1,3 +1,4 @@
+import Ionicons from "@react-native-vector-icons/ionicons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useConectividad } from "../../hooks/useConectividad";
@@ -153,6 +154,25 @@ export default function AgendaScreen() {
       keyExtractor={(item) => item.evento.id}
       contentContainerStyle={styles.lista}
       stickySectionHeadersEnabled
+      ListHeaderComponent={
+        conectividad === "sin-conexion" ? (
+          <View style={[styles.tarjetaConexion, styles.conexionInactiva]}>
+            <Ionicons name="cloud-offline-outline" size={23} color="#B45309" />
+
+            <View style={styles.informacionConexion}>
+              <Text
+                style={[styles.tituloConexion, styles.textoConexionInactiva]}
+              >
+                Sin conexión
+              </Text>
+
+              <Text style={styles.descripcionConexion}>
+                Te mostramos la última agenda guardada en este teléfono.
+              </Text>
+            </View>
+          </View>
+        ) : null
+      }
       renderSectionHeader={({ section }) => (
         <Text style={styles.encabezado} accessibilityRole="header">
           {section.title}
@@ -232,5 +252,40 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+
+  tarjetaConexion: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    padding: 13,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+
+  conexionInactiva: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+  },
+
+  informacionConexion: {
+    flex: 1,
+    gap: 3,
+  },
+
+  tituloConexion: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  textoConexionInactiva: {
+    color: "#92400E",
+  },
+
+  descripcionConexion: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#64748B",
   },
 });
