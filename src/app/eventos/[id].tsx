@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 
@@ -358,13 +359,7 @@ export default function DetalleEventoScreen() {
 
       {/* Cargando */}
       {estado.fase === "cargando" && (
-        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-          <ActivityIndicator size="large" color={colores.primarioFuerte} />
-
-          <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
-            Cargando evento...
-          </Texto>
-        </View>
+        <PantallaCarga titulo="Cargando evento..." />
       )}
 
       {/* Error */}

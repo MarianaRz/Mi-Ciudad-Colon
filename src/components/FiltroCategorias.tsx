@@ -90,7 +90,7 @@ export function FiltroCategorias({
 const estilos = StyleSheet.create({
   contenedor: {
     position: "absolute",
-    top: 112,
+    top: 80,
     left: 0,
     right: 0,
     zIndex: 15,

@@ -1,20 +1,14 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { UsuarioApi } from "../../api/usuario";
 import { obtenerMiUsuarioApi } from "../../api/usuario";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import { useTema } from "../../tema/TemaContext";
@@ -196,14 +190,7 @@ export default function PerfilScreen() {
   }
 
   if (cargando) {
-    return (
-      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-        <ActivityIndicator size="large" color={colores.primarioFuerte} />
-        <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
-          Cargando tu cuenta...
-        </Texto>
-      </View>
-    );
+    return <PantallaCarga titulo="Cargando tu cuenta..." />;
   }
 
   if (sesion && bloqueada) {

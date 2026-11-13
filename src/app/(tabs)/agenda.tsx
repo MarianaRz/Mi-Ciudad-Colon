@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useConectividad } from "../../hooks/useConectividad";
 import { sincronizarEventosGuardados } from "../../servicios/eventosGuardados";
 
-import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
+import { SectionList, StyleSheet, View } from "react-native";
 
 import { obtenerEventosApi } from "../../api/eventos";
 import { obtenerLugaresApi } from "../../api/lugares";
 import { TarjetaEvento } from "../../components/TarjetaEvento";
 import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import { comprobarCambiosAgenda } from "../../servicios/seguimientoAgenda";
@@ -117,21 +118,7 @@ export default function AgendaScreen() {
   );
 
   if (estado.fase === "cargando") {
-    return (
-      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-        <ActivityIndicator size="large" color={colores.primarioFuerte} />
-
-        <Texto
-          style={{
-            fontSize: 15,
-            color: colores.textoSecundario,
-            textAlign: "center",
-          }}
-        >
-          Cargando agenda...
-        </Texto>
-      </View>
-    );
+    return <PantallaCarga titulo="Cargando agenda..." />;
   }
 
   if (estado.fase === "error") {

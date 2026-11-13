@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useTema } from "../../tema/TemaContext";
 import { fuentes } from "../../tema/tipografia";
@@ -20,7 +21,7 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  View
+  View,
 } from "react-native";
 
 import EscanerQR from "../../components/EscanerQR";
@@ -537,15 +538,7 @@ export default function RecorridoScreen() {
   // Estados de carga y error
   // --------------------------------------------------
   if (estado.fase === "cargando") {
-    return (
-      <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-        <ActivityIndicator size="large" color={colores.primarioFuerte} />
-
-        <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
-          Cargando tu recorrido...
-        </Texto>
-      </View>
-    );
+    return <PantallaCarga titulo="Cargando tu recorrido..." />;
   }
 
   if (estado.fase === "error") {

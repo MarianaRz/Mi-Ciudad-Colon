@@ -2,19 +2,13 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { Image } from "expo-image";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { obtenerLugaresApi } from "../../api/lugares";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import {
@@ -142,18 +136,7 @@ export default function FavoritosScreen() {
       />
 
       {cargandoSesion ? (
-        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-          <ActivityIndicator size="large" color={colores.primarioFuerte} />
-          <Texto
-            style={{
-              fontSize: 15,
-              color: colores.textoSecundario,
-              textAlign: "center",
-            }}
-          >
-            Cargando tu sesión...
-          </Texto>
-        </View>
+        <PantallaCarga titulo="Cargando tu sesión..." />
       ) : sesion && bloqueada ? (
         <BloqueoSesion email={sesion.email} />
       ) : !sesion ? (
@@ -198,18 +181,7 @@ export default function FavoritosScreen() {
           </View>
         </View>
       ) : estado.fase === "cargando" ? (
-        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-          <ActivityIndicator size="large" color={colores.primarioFuerte} />
-          <Texto
-            style={{
-              fontSize: 15,
-              color: colores.textoSecundario,
-              textAlign: "center",
-            }}
-          >
-            Cargando favoritos...
-          </Texto>
-        </View>
+        <PantallaCarga titulo="Cargando favoritos..." />
       ) : estado.fase === "error" ? (
         <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
           <View

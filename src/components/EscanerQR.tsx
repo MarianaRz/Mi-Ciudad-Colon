@@ -12,9 +12,13 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+
+import { useTema } from "../tema/TemaContext";
+import Boton from "./ui/Boton";
+import PantallaCarga from "./ui/PantallaCarga";
+import Texto from "./ui/Texto";
 
 interface EscanerQRProps {
   visible: boolean;
@@ -28,6 +32,7 @@ export default function EscanerQR({
   onEscaneado,
 }: EscanerQRProps) {
   const [permiso, solicitarPermiso] = useCameraPermissions();
+  const { colores } = useTema();
 
   const [escaneado, setEscaneado] = useState(false);
   const [comprobando, setComprobando] = useState(false);
@@ -108,50 +113,71 @@ export default function EscanerQR({
       }
     }
   }
-
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={cerrar}>
-      <View style={styles.contenedor}>
-        <View style={styles.encabezado}>
-          <Text style={styles.titulo}>Escanear código QR</Text>
+      <View style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
+        <View
+          style={[
+            estilos.encabezado,
+            {
+              backgroundColor: colores.superficie,
+              borderBottomColor: colores.borde,
+            },
+          ]}
+        >
+          <Texto style={estilos.titulo}>Escanear código QR</Texto>
 
           <Pressable
             onPress={cerrar}
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Cerrar escáner"
+            style={[
+              estilos.botonCerrar,
+              { backgroundColor: colores.primarioSuave },
+            ]}
           >
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+            <Ionicons name="close" size={24} color={colores.primarioFuerte} />
           </Pressable>
         </View>
 
         {!permiso ? (
-          <View style={styles.centro}>
-            <ActivityIndicator size="large" color="#075985" />
-
-            <Text style={styles.mensaje}>Comprobando permiso de cámara...</Text>
-          </View>
+          <PantallaCarga titulo="Comprobando permiso de cámara..." />
         ) : !permiso.granted ? (
-          <View style={styles.centro}>
-            <Ionicons name="camera-outline" size={54} color="#075985" />
+          <View style={estilos.centro}>
+            <View
+              style={[
+                estilos.circuloEstado,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="camera-outline"
+                size={32}
+                color={colores.primarioFuerte}
+              />
+            </View>
 
-            <Text style={styles.mensaje}>
+            <Texto style={estilos.mensaje}>
               Necesitamos usar la cámara para leer el código QR del lugar que
               visitaste.
-            </Text>
+            </Texto>
 
             {permiso.canAskAgain ? (
-              <Pressable style={styles.boton} onPress={solicitarPermiso}>
-                <Text style={styles.textoBoton}>Permitir cámara</Text>
-              </Pressable>
+              <View style={estilos.acciones}>
+                <Boton titulo="Permitir cámara" onPress={solicitarPermiso} />
+              </View>
             ) : (
-              <Text style={styles.ayuda}>
+              <Texto
+                style={[estilos.ayuda, { color: colores.textoSecundario }]}
+              >
                 El permiso fue rechazado. Podés habilitarlo desde los ajustes
                 del teléfono o registrar tu visita manualmente.
-              </Text>
+              </Texto>
             )}
           </View>
         ) : (
-          <View style={styles.contenedorCamara}>
+          <View style={estilos.contenedorCamara}>
             <CameraView
               style={StyleSheet.absoluteFill}
               facing="back"
@@ -163,47 +189,102 @@ export default function EscanerQR({
               }
             />
 
-            <View pointerEvents="none" style={styles.superposicion}>
-              <View style={styles.marcoQR} />
+            <View pointerEvents="none" style={estilos.superposicion}>
+              <View style={estilos.sombra} />
 
-              <Text style={styles.instrucciones}>
-                Apuntá la cámara al código QR del lugar.
-              </Text>
+              <View style={estilos.filaCentral}>
+                <View style={estilos.sombra} />
+
+                <View style={estilos.marcoQR}>
+                  <View
+                    style={[
+                      estilos.esquina,
+                      estilos.esquinaSuperiorIzquierda,
+                      { borderColor: colores.primario },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      estilos.esquina,
+                      estilos.esquinaSuperiorDerecha,
+                      { borderColor: colores.primario },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      estilos.esquina,
+                      estilos.esquinaInferiorIzquierda,
+                      { borderColor: colores.primario },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      estilos.esquina,
+                      estilos.esquinaInferiorDerecha,
+                      { borderColor: colores.primario },
+                    ]}
+                  />
+                </View>
+
+                <View style={estilos.sombra} />
+              </View>
+
+              <View style={[estilos.sombra, estilos.sombraInferior]}>
+                <Texto style={estilos.instrucciones}>
+                  Apuntá la cámara al código QR del lugar.
+                </Texto>
+              </View>
             </View>
 
             {comprobando && (
-              <View style={styles.panelResultado}>
-                <ActivityIndicator size="large" color="#075985" />
+              <View
+                style={[
+                  estilos.panelResultado,
+                  {
+                    backgroundColor: colores.superficie,
+                    borderColor: colores.borde,
+                  },
+                ]}
+              >
+                <ActivityIndicator
+                  size="large"
+                  color={colores.primarioFuerte}
+                />
 
-                <Text style={styles.mensaje}>Comprobando código QR...</Text>
+                <Texto style={estilos.mensaje}>Comprobando código QR...</Texto>
               </View>
             )}
 
             {mensajeError && !comprobando && (
-              <View style={styles.panelResultado}>
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={46}
-                  color="#B42318"
-                />
-
-                <Text style={styles.mensaje}>{mensajeError}</Text>
-
-                <Pressable
-                  style={styles.boton}
-                  onPress={reintentar}
-                  accessibilityRole="button"
+              <View
+                style={[
+                  estilos.panelResultado,
+                  {
+                    backgroundColor: colores.superficie,
+                    borderColor: colores.borde,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    estilos.circuloEstado,
+                    { backgroundColor: colores.errorSuave },
+                  ]}
                 >
-                  <Text style={styles.textoBoton}>Volver a escanear</Text>
-                </Pressable>
+                  <Ionicons
+                    name="alert-circle"
+                    size={32}
+                    color={colores.error}
+                  />
+                </View>
 
-                <Pressable
-                  style={styles.botonCancelar}
-                  onPress={cerrar}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.textoCancelar}>Cancelar</Text>
-                </Pressable>
+                <Texto style={estilos.mensaje}>{mensajeError}</Texto>
+
+                <View style={estilos.acciones}>
+                  <Boton titulo="Volver a escanear" onPress={reintentar} />
+
+                  <Boton titulo="Cancelar" variante="texto" onPress={cerrar} />
+                </View>
               </View>
             )}
           </View>
@@ -213,26 +294,34 @@ export default function EscanerQR({
   );
 }
 
-const styles = StyleSheet.create({
+const MARCO = 260;
+
+const estilos = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
 
   encabezado: {
-    backgroundColor: "#075985",
     paddingHorizontal: 20,
     paddingTop: 48,
-    paddingBottom: 18,
+    paddingBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    borderBottomWidth: 1,
   },
 
   titulo: {
-    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "700",
+  },
+
+  botonCerrar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   centro: {
@@ -240,36 +329,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 28,
-    gap: 20,
+    gap: 16,
+  },
+
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   mensaje: {
-    color: "#334155",
     fontSize: 16,
     lineHeight: 24,
     textAlign: "center",
   },
 
   ayuda: {
-    color: "#64748B",
     fontSize: 14,
     lineHeight: 22,
     textAlign: "center",
   },
 
-  boton: {
-    backgroundColor: "#075985",
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  textoBoton: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  acciones: {
+    alignSelf: "stretch",
+    gap: 6,
+    marginTop: 4,
   },
 
   contenedorCamara: {
@@ -279,28 +365,73 @@ const styles = StyleSheet.create({
 
   superposicion: {
     ...StyleSheet.absoluteFill,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 24,
+  },
+
+  sombra: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+
+  filaCentral: {
+    flexDirection: "row",
+    height: MARCO,
   },
 
   marcoQR: {
-    width: 240,
-    height: 240,
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-    borderRadius: 20,
+    width: MARCO,
+    height: MARCO,
+  },
+
+  esquina: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+  },
+
+  esquinaSuperiorIzquierda: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 20,
+  },
+
+  esquinaSuperiorDerecha: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 20,
+  },
+
+  esquinaInferiorIzquierda: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 20,
+  },
+
+  esquinaInferiorDerecha: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 20,
+  },
+
+  sombraInferior: {
+    alignItems: "center",
+    paddingTop: 24,
+    paddingHorizontal: 24,
   },
 
   instrucciones: {
     color: "#FFFFFF",
     fontSize: 16,
+    lineHeight: 24,
     fontWeight: "600",
     textAlign: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
   },
 
   panelResultado: {
@@ -308,21 +439,15 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     top: "30%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    borderRadius: 24,
+    borderWidth: 1,
     padding: 24,
     alignItems: "center",
     gap: 16,
-  },
-
-  botonCancelar: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-
-  textoCancelar: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#64748B",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 8,
   },
 });

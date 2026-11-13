@@ -2,8 +2,9 @@ import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 
 import { obtenerLugaresApi } from "../../api/lugares";
 import { useUbicacion } from "../../hooks/useUbicacion";
@@ -27,36 +28,37 @@ export default function MapaScreen() {
   const [rutaActiva, setRutaActiva] = useState<ResultadoRuta | null>(null);
   const [categoriaActiva, setCategoriaActiva] = useState<string | null>(null);
 
-  const { data: respuestaLugares, isLoading, error } = useQuery({
+  const {
+    data: respuestaLugares,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["lugares"],
     queryFn: obtenerLugaresApi,
   });
 
   if (isLoading) {
-    return (
-      <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#075985" />
-        <Text style={styles.textoCarga}>Cargando mapa y lugares...</Text>
-      </View>
-    );
+    return <PantallaCarga titulo="Cargando mapa y lugares..." />;
   }
 
   if (error) {
     return (
       <View style={styles.centrado}>
         <Text style={styles.tituloError}>Error de conexión</Text>
-        <Text style={styles.textoError}>No se pudieron cargar los datos de la API.</Text>
+        <Text style={styles.textoError}>
+          No se pudieron cargar los datos de la API.
+        </Text>
       </View>
     );
   }
 
-  const latCentro = ubicacionUsuario?.latitude ?? -32.2250;
-  const lonCentro = ubicacionUsuario?.longitude ?? -58.1480;
+  const latCentro = ubicacionUsuario?.latitude ?? -32.225;
+  const lonCentro = ubicacionUsuario?.longitude ?? -58.148;
 
   // Filtrar lugares según la categoría
   const lugaresVisibles =
     respuestaLugares?.datos?.filter((lugar) =>
-      categoriaActiva ? lugar.categoriaId === categoriaActiva : true
+      categoriaActiva ? lugar.categoriaId === categoriaActiva : true,
     ) || [];
 
   // Calcular distancias y ordenar los 3 más cercanos
@@ -67,7 +69,7 @@ export default function MapaScreen() {
             latCentro,
             lonCentro,
             lugar.coordenadas.latitud,
-            lugar.coordenadas.longitud
+            lugar.coordenadas.longitud,
           )
         : 0;
       return { ...lugar, distanciaMetros };
@@ -87,7 +89,7 @@ export default function MapaScreen() {
       latCentro,
       lonCentro,
       lugar.coordenadas.latitud,
-      lugar.coordenadas.longitud
+      lugar.coordenadas.longitud,
     );
 
     if (resultado) {
@@ -109,8 +111,22 @@ export default function MapaScreen() {
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
       },
-      500
+      500,
     );
+  };
+
+  const centrarEnMiUbicacion = () => {
+    if (ubicacionUsuario) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: ubicacionUsuario.latitude,
+          longitude: ubicacionUsuario.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        },
+        500,
+      );
+    }
   };
 
   return (
@@ -127,7 +143,10 @@ export default function MapaScreen() {
           longitudeDelta: 0.05,
         }}
         showsUserLocation={true}
-        showsMyLocationButton={true}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        toolbarEnabled={false}
+        showsScale={false}
       >
         {lugaresVisibles.map((lugar) => {
           if (!lugar.coordenadas) return null;
@@ -196,6 +215,24 @@ export default function MapaScreen() {
           <Text style={styles.textoErrorBanner}>{errorUbicacion}</Text>
         </View>
       )}
+
+      {/* 3B. BOTÓN PERSONALIZADO DE MI UBICACIÓN */}
+      {!buscando && !lugarDestino && (
+        <View style={styles.contenedorBotonFlotante}>
+          <TouchableOpacity
+            style={styles.botonUbicacion}
+            onPress={centrarEnMiUbicacion}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="locate" size={24} color="#3F5BD0" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 4. LISTA CERCA TUYO (Oculta al buscar o navegar) */}
+      {!buscando && !lugarDestino && (
+        <ListaCercaTuyo lugares={lugaresCercanos} />
+      )}
     </View>
   );
 }
@@ -203,7 +240,12 @@ export default function MapaScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   mapa: { flex: 1 },
-  centrado: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  centrado: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   textoCarga: { marginTop: 10, color: "#475569", fontSize: 15 },
   tituloError: { fontSize: 18, fontWeight: "700", color: "#B91C1C" },
   textoError: { marginTop: 6, color: "#64748B", textAlign: "center" },
@@ -224,4 +266,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   textoErrorBanner: { color: "#B91C1C", fontSize: 12, textAlign: "center" },
+
+  contenedorBotonFlotante: {
+    position: "absolute",
+    bottom: 100,
+    right: 16,
+    zIndex: 10,
+  },
+  botonUbicacion: {
+    backgroundColor: "#FFFFFF",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    // Sombras para iOS y Android
+    shadowColor: "#444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
 });

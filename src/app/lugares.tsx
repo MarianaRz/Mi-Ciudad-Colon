@@ -5,7 +5,6 @@ import { Link } from "expo-router";
 import { useState } from "react";
 
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import {
 
 import { obtenerCategoriasApi } from "../api/categorias";
 import { obtenerLugaresApi } from "../api/lugares";
+import PantallaCarga from "../components/ui/PantallaCarga";
 import Texto from "../components/ui/Texto";
 import { useTema } from "../tema/TemaContext";
 import { fuentes } from "../tema/tipografia";
@@ -56,12 +56,7 @@ export default function LugaresScreen() {
   const hayError = consultaLugares.isError || consultaCategorias.isError;
 
   if (cargando) {
-    return (
-      <View style={styles.centro}>
-        <ActivityIndicator size="large" color={AZUL} />
-        <Text style={styles.textoSecundario}>Cargando lugares...</Text>
-      </View>
-    );
+    return <PantallaCarga titulo="Cargando lugares..." />;
   }
 
   if (hayError) {

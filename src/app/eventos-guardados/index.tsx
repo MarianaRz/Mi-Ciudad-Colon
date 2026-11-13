@@ -1,14 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { Link, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  SectionList,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { SectionList, StyleSheet, View } from "react-native";
 import { comprobarCambiosAgenda } from "../../servicios/seguimientoAgenda";
 
 import { obtenerEventosApi } from "../../api/eventos";
@@ -16,11 +9,16 @@ import { obtenerEventosGuardadosApi } from "../../api/eventosGuardados";
 import { obtenerLugaresApi } from "../../api/lugares";
 import { BloqueoSesion } from "../../components/BloqueoSesion";
 import { TarjetaEvento } from "../../components/TarjetaEvento";
+import Boton from "../../components/ui/Boton";
+import PantallaCarga from "../../components/ui/PantallaCarga";
+import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import {
   obtenerEventosGuardados,
   sincronizarEventosGuardados,
 } from "../../servicios/eventosGuardados";
+import { useTema } from "../../tema/TemaContext";
+import { fuentes } from "../../tema/tipografia";
 import type { Evento } from "../../tipos/evento";
 import type { Lugar } from "../../tipos/lugar";
 import {
@@ -29,8 +27,6 @@ import {
   textoUbicacion,
 } from "../../utils/agenda";
 import { claveDia, tituloDia } from "../../utils/fechas";
-
-const AZUL = "#075985";
 
 function armarSeccionesAnteriores(
   eventos: Evento[],
@@ -73,6 +69,7 @@ function armarSeccionesAnteriores(
 }
 
 export default function EventosGuardadosScreen() {
+  const { colores } = useTema();
   const { sesion, cargando: cargandoSesion, bloqueada } = useSesion();
 
   const [secciones, setSecciones] = useState<SeccionAgenda[]>([]);
@@ -149,114 +146,157 @@ export default function EventosGuardadosScreen() {
       <Stack.Screen
         options={{
           title: "Mis eventos",
-          headerStyle: { backgroundColor: AZUL },
-          headerTintColor: "#FFFFFF",
-          headerTitleStyle: { fontWeight: "700" },
+          headerStyle: { backgroundColor: colores.superficie },
+          headerTintColor: colores.texto,
+          headerTitleStyle: { fontFamily: fuentes.negrita, fontSize: 18 },
           headerShadowVisible: false,
         }}
       />
 
       {cargandoSesion ? (
-        <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={AZUL} />
-          <Text style={styles.textoSecundario}>Cargando tu sesión...</Text>
-        </View>
+        <PantallaCarga titulo="Cargando tu sesión..." />
       ) : sesion && bloqueada ? (
         <BloqueoSesion email={sesion.email} />
       ) : !sesion ? (
-        <View style={styles.centrado}>
-          <Ionicons name="heart-outline" size={62} color={AZUL} />
+        <View style={[estilos.centrado, { backgroundColor: colores.fondo }]}>
+          <View
+            style={[
+              estilos.circuloEstado,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name="heart-outline"
+              size={32}
+              color={colores.primarioFuerte}
+            />
+          </View>
 
-          <Text style={styles.tituloVacio}>
+          <Texto style={estilos.titulo}>
             Tus eventos guardados son personales
-          </Text>
+          </Texto>
 
-          <Text style={styles.textoSecundario}>
+          <Texto style={[estilos.texto, { color: colores.textoSecundario }]}>
             Iniciá sesión para guardar eventos y recibir recordatorios.
-          </Text>
+          </Texto>
 
-          <Link href="/login" asChild>
-            <Pressable
-              style={styles.botonPrincipal}
-              accessibilityRole="button"
-              accessibilityLabel="Iniciar sesión"
-            >
-              <Text style={styles.textoBotonPrincipal}>Iniciar sesión</Text>
-            </Pressable>
-          </Link>
+          <View style={estilos.accion}>
+            <Link href="/login" asChild>
+              <Boton
+                titulo="Iniciar sesión"
+                accessibilityLabel="Iniciar sesión"
+              />
+            </Link>
+          </View>
         </View>
       ) : (
         <SectionList
           sections={secciones}
           keyExtractor={(item) => item.evento.id}
-          contentContainerStyle={styles.lista}
+          style={{ backgroundColor: colores.fondo }}
+          contentContainerStyle={estilos.lista}
           stickySectionHeadersEnabled
           refreshing={cargando}
           onRefresh={() => void cargarGuardados()}
           renderSectionHeader={({ section }) => (
-            <Text style={styles.encabezadoDia} accessibilityRole="header">
-              {section.title}
-            </Text>
+            <View
+              style={[estilos.encabezado, { backgroundColor: colores.fondo }]}
+              accessibilityRole="header"
+            >
+              <View
+                style={[
+                  estilos.iconoEncabezado,
+                  { backgroundColor: colores.primarioSuave },
+                ]}
+              >
+                <Ionicons
+                  name={
+                    section.clave.startsWith("anterior-") ? "time" : "calendar"
+                  }
+                  size={16}
+                  color={colores.primarioFuerte}
+                />
+              </View>
+
+              <Texto style={{ fontSize: 17, fontWeight: "700" }}>
+                {section.title}
+              </Texto>
+            </View>
           )}
           renderItem={({ item }) => (
             <TarjetaEvento evento={item.evento} ubicacion={item.ubicacion} />
           )}
-          SectionSeparatorComponent={() => <View style={styles.separador} />}
-          ItemSeparatorComponent={() => <View style={styles.separador} />}
+          SectionSeparatorComponent={() => <View style={estilos.separador} />}
+          ItemSeparatorComponent={() => <View style={estilos.separador} />}
           ListEmptyComponent={
             cargando ? (
-              <View style={styles.estado}>
-                <ActivityIndicator size="large" color={AZUL} />
-                <Text style={styles.textoSecundario}>
-                  Cargando eventos guardados...
-                </Text>
-              </View>
+              <PantallaCarga titulo="Cargando eventos guardados..." />
             ) : error ? (
-              <View style={styles.estado}>
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={54}
-                  color="#B42318"
-                />
-
-                <Text style={styles.tituloVacio}>
-                  No pudimos cargar tus eventos guardados
-                </Text>
-
-                <Text style={styles.textoSecundario}>{error}</Text>
-
-                <Pressable
-                  style={styles.botonPrincipal}
-                  onPress={() => void cargarGuardados()}
-                  accessibilityRole="button"
-                  accessibilityLabel="Reintentar cargar los eventos guardados"
+              <View style={estilos.centrado}>
+                <View
+                  style={[
+                    estilos.circuloEstado,
+                    { backgroundColor: colores.errorSuave },
+                  ]}
                 >
-                  <Text style={styles.textoBotonPrincipal}>Reintentar</Text>
-                </Pressable>
+                  <Ionicons
+                    name="alert-circle"
+                    size={32}
+                    color={colores.error}
+                  />
+                </View>
+
+                <Texto style={[estilos.titulo, { color: colores.error }]}>
+                  No pudimos cargar tus eventos guardados
+                </Texto>
+
+                <Texto
+                  style={[estilos.texto, { color: colores.textoSecundario }]}
+                >
+                  {error}
+                </Texto>
+
+                <View style={estilos.accion}>
+                  <Boton
+                    titulo="Reintentar"
+                    onPress={() => void cargarGuardados()}
+                    accessibilityLabel="Reintentar cargar los eventos guardados"
+                  />
+                </View>
               </View>
             ) : (
-              <View style={styles.estado}>
-                <Ionicons name="heart-outline" size={64} color="#94A3B8" />
+              <View style={estilos.centrado}>
+                <View
+                  style={[
+                    estilos.circuloEstado,
+                    { backgroundColor: colores.primarioSuave },
+                  ]}
+                >
+                  <Ionicons
+                    name="heart-outline"
+                    size={32}
+                    color={colores.primarioFuerte}
+                  />
+                </View>
 
-                <Text style={styles.tituloVacio}>
+                <Texto style={estilos.titulo}>
                   Todavía no guardaste eventos
-                </Text>
+                </Texto>
 
-                <Text style={styles.textoSecundario}>
+                <Texto
+                  style={[estilos.texto, { color: colores.textoSecundario }]}
+                >
                   Mirá la agenda y guardá los eventos a los que quieras ir.
-                </Text>
+                </Texto>
 
-                <Link href="/agenda" asChild>
-                  <Pressable
-                    style={styles.botonPrincipal}
-                    accessibilityRole="button"
-                    accessibilityLabel="Ver la agenda"
-                  >
-                    <Text style={styles.textoBotonPrincipal}>
-                      Ver la agenda
-                    </Text>
-                  </Pressable>
-                </Link>
+                <View style={estilos.accion}>
+                  <Link href="/agenda" asChild>
+                    <Boton
+                      titulo="Ver la agenda"
+                      accessibilityLabel="Ver la agenda"
+                    />
+                  </Link>
+                </View>
               </View>
             )
           }
@@ -266,62 +306,54 @@ export default function EventosGuardadosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const estilos = StyleSheet.create({
   lista: {
     flexGrow: 1,
     padding: 16,
-    backgroundColor: "#F8FAFC",
+    paddingBottom: 32,
   },
-  encabezadoDia: {
-    paddingVertical: 8,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#17202A",
-    backgroundColor: "#F8FAFC",
+  encabezado: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+  },
+  iconoEncabezado: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
   separador: {
-    height: 10,
+    height: 12,
   },
   centrado: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
     padding: 24,
+    gap: 12,
   },
-  estado: {
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 64,
-    paddingHorizontal: 12,
-    gap: 16,
   },
-  tituloVacio: {
-    fontSize: 20,
+  titulo: {
+    fontSize: 18,
     fontWeight: "700",
-    color: "#17202A",
     textAlign: "center",
   },
-  textoSecundario: {
+  texto: {
     fontSize: 15,
-    lineHeight: 23,
-    color: "#64748B",
+    lineHeight: 22,
     textAlign: "center",
   },
-  botonPrincipal: {
-    minHeight: 52,
-    minWidth: 180,
-    backgroundColor: AZUL,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
+  accion: {
+    alignSelf: "stretch",
     marginTop: 8,
-  },
-  textoBotonPrincipal: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
   },
 });

@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { obtenerCategoriasApi } from "../../api/categorias";
 import { obtenerLugarPorIdApi } from "../../api/lugares";
 import ReproductorAudioguia from "../../components/ReproductorAudioguia";
+import PantallaCarga from "../../components/ui/PantallaCarga";
 import Texto from "../../components/ui/Texto";
 import { useSesion } from "../../contextos/SesionContext";
 import {
@@ -226,12 +227,7 @@ export default function DetalleLugarScreen() {
     return (
       <>
         {opcionesHeader}
-        <View style={[estilos.centro, { backgroundColor: colores.fondo }]}>
-          <ActivityIndicator size="large" color={colores.primarioFuerte} />
-          <Texto style={{ fontSize: 15, color: colores.textoSecundario }}>
-            Cargando lugar...
-          </Texto>
-        </View>
+        <PantallaCarga titulo="Cargando lugar..." />
       </>
     );
   }
