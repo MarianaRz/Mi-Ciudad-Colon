@@ -2,12 +2,16 @@ import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import Aviso from "../../components/ui/Aviso";
 import PantallaCarga from "../../components/ui/PantallaCarga";
+import Texto from "../../components/ui/Texto";
 
+import { obtenerCategoriasApi } from "../../api/categorias";
 import { obtenerLugaresApi } from "../../api/lugares";
 import { useUbicacion } from "../../hooks/useUbicacion";
+import { useTema } from "../../tema/TemaContext";
 import { Lugar } from "../../tipos/lugar";
 import { obtenerInfoCategoria } from "../../utils/categorias";
 import { calcularDistanciaMetros } from "../../utils/distancias";
@@ -20,6 +24,7 @@ import { TarjetaRuta } from "../../components/TarjetaRuta";
 
 export default function MapaScreen() {
   const router = useRouter();
+  const { colores } = useTema();
   const mapRef = useRef<MapView>(null);
   const { ubicacionUsuario, errorUbicacion } = useUbicacion();
 
@@ -37,17 +42,53 @@ export default function MapaScreen() {
     queryFn: obtenerLugaresApi,
   });
 
+  // Va ANTES de los return condicionales (regla de los hooks)
+  const { data: respuestaCategorias } = useQuery({
+    queryKey: ["categorias"],
+    queryFn: obtenerCategoriasApi,
+  });
+
   if (isLoading) {
     return <PantallaCarga titulo="Cargando mapa y lugares..." />;
   }
 
   if (error) {
     return (
-      <View style={styles.centrado}>
-        <Text style={styles.tituloError}>Error de conexión</Text>
-        <Text style={styles.textoError}>
+      <View style={[styles.centrado, { backgroundColor: colores.fondo }]}>
+        <View
+          style={[
+            styles.circuloEstado,
+            { backgroundColor: colores.errorSuave },
+          ]}
+        >
+          <Ionicons
+            name="cloud-offline-outline"
+            size={32}
+            color={colores.error}
+          />
+        </View>
+
+        <Texto
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: colores.error,
+            textAlign: "center",
+          }}
+        >
+          Error de conexión
+        </Texto>
+
+        <Texto
+          style={{
+            fontSize: 15,
+            lineHeight: 22,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
           No se pudieron cargar los datos de la API.
-        </Text>
+        </Texto>
       </View>
     );
   }
@@ -131,7 +172,7 @@ export default function MapaScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 1. MAPA PRINCIPAL */}
+      {/* MAPA PRINCIPAL */}
       <MapView
         ref={mapRef}
         provider={PROVIDER_DEFAULT}
@@ -164,7 +205,12 @@ export default function MapaScreen() {
               onCalloutPress={() => router.push(`/lugares/${lugar.id}` as any)}
               tracksViewChanges={true}
             >
-              <View style={[styles.pinMarcador, { backgroundColor: color }]}>
+              <View
+                style={[
+                  styles.pinMarcador,
+                  { backgroundColor: color, borderColor: colores.superficie },
+                ]}
+              >
                 <Ionicons name={icono} size={18} color="#FFFFFF" />
               </View>
             </Marker>
@@ -174,28 +220,29 @@ export default function MapaScreen() {
         {rutaActiva && (
           <Polyline
             coordinates={rutaActiva.puntos}
-            strokeColor="#075985"
+            strokeColor={colores.primarioFuerte}
             strokeWidth={5}
           />
         )}
       </MapView>
 
-      {/* 2. BUSCADOR SUPERIOR */}
+      {/* BUSCADOR SUPERIOR */}
       <BuscadorMapa
         lugares={respuestaLugares?.datos || []}
         onSeleccionarLugar={manejarSeleccionDestino}
         onCambiarEstadoBusqueda={setBuscando}
       />
 
-      {/* 2B. FILTRO DE CATEGORÍAS */}
+      {/* FILTRO DE CATEGORÍAS */}
       {!buscando && (
         <FiltroCategorias
+          categorias={respuestaCategorias?.datos ?? []}
           categoriaSeleccionada={categoriaActiva}
           onSeleccionarCategoria={setCategoriaActiva}
         />
       )}
 
-      {/* 3. TARJETA DE RUTA ACTIVA */}
+      {/* TARJETA DE RUTA ACTIVA */}
       {lugarDestino && rutaActiva && (
         <TarjetaRuta
           lugar={lugarDestino}
@@ -204,32 +251,35 @@ export default function MapaScreen() {
         />
       )}
 
-      {/* 4. LISTA CERCA TUYO (Oculta al buscar o navegar) */}
-      {!buscando && !lugarDestino && (
-        <ListaCercaTuyo lugares={lugaresCercanos} />
-      )}
-
-      {/* 5. BANNER DE ERROR GPS */}
+      {/* BANNER DE ERROR GPS */}
       {errorUbicacion && (
         <View style={styles.bannerError}>
-          <Text style={styles.textoErrorBanner}>{errorUbicacion}</Text>
+          <Aviso mensaje={errorUbicacion} />
         </View>
       )}
 
-      {/* 3B. BOTÓN PERSONALIZADO DE MI UBICACIÓN */}
+      {/* BOTÓN PERSONALIZADO DE MI UBICACIÓN */}
       {!buscando && !lugarDestino && (
         <View style={styles.contenedorBotonFlotante}>
           <TouchableOpacity
-            style={styles.botonUbicacion}
+            style={[
+              styles.botonUbicacion,
+              {
+                backgroundColor: colores.superficie,
+                borderColor: colores.borde,
+              },
+            ]}
             onPress={centrarEnMiUbicacion}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Centrar el mapa en mi ubicación"
           >
-            <Ionicons name="locate" size={24} color="#3F5BD0" />
+            <Ionicons name="locate" size={24} color={colores.primarioFuerte} />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* 4. LISTA CERCA TUYO (Oculta al buscar o navegar) */}
+      {/* LISTA CERCA TUYO (Oculta al buscar o navegar) */}
       {!buscando && !lugarDestino && (
         <ListaCercaTuyo lugares={lugaresCercanos} />
       )}
@@ -244,16 +294,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
+    gap: 12,
   },
-  textoCarga: { marginTop: 10, color: "#475569", fontSize: 15 },
-  tituloError: { fontSize: 18, fontWeight: "700", color: "#B91C1C" },
-  textoError: { marginTop: 6, color: "#64748B", textAlign: "center" },
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
   pinMarcador: {
     padding: 7,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
     elevation: 4,
   },
   bannerError: {
@@ -261,12 +316,7 @@ const styles = StyleSheet.create({
     top: 165,
     left: 16,
     right: 16,
-    backgroundColor: "#FEE2E2",
-    padding: 10,
-    borderRadius: 10,
   },
-  textoErrorBanner: { color: "#B91C1C", fontSize: 12, textAlign: "center" },
-
   contenedorBotonFlotante: {
     position: "absolute",
     bottom: 100,
@@ -274,17 +324,16 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   botonUbicacion: {
-    backgroundColor: "#FFFFFF",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
-    // Sombras para iOS y Android
-    shadowColor: "#444",
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
+    shadowRadius: 8,
     elevation: 5,
   },
 });

@@ -1,16 +1,18 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
-import { categoriasMock } from "../mocks/categorias";
 import { useTema } from "../tema/TemaContext";
+import type { Categoria } from "../tipos/categoria";
 import Texto from "./ui/Texto";
 
 interface FiltroCategoriasProps {
+  categorias: Categoria[];
   categoriaSeleccionada: string | null;
   onSeleccionarCategoria: (categoriaId: string | null) => void;
 }
 
 export function FiltroCategorias({
+  categorias,
   categoriaSeleccionada,
   onSeleccionarCategoria,
 }: FiltroCategoriasProps) {
@@ -48,7 +50,7 @@ export function FiltroCategorias({
         </Pressable>
 
         {/* Chips de cada categoría */}
-        {categoriasMock.map((cat) => {
+        {categorias.map((cat) => {
           const activa = categoriaSeleccionada === cat.id;
 
           return (

@@ -9,13 +9,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
 
 import { obtenerCategoriasApi } from "../api/categorias";
 import { obtenerLugaresApi } from "../api/lugares";
+import Boton from "../components/ui/Boton";
 import PantallaCarga from "../components/ui/PantallaCarga";
 import Texto from "../components/ui/Texto";
 import { useTema } from "../tema/TemaContext";
@@ -23,16 +23,6 @@ import { fuentes } from "../tema/tipografia";
 import { obtenerInfoCategoria } from "../utils/categorias";
 
 import type { Lugar } from "../tipos/lugar";
-
-const AZUL = "#075985";
-
-const SOMBRA = {
-  shadowColor: "#000",
-  shadowOpacity: 0.1,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 4,
-} as const;
 
 export default function LugaresScreen() {
   const { colores } = useTema();
@@ -61,24 +51,52 @@ export default function LugaresScreen() {
 
   if (hayError) {
     return (
-      <View style={styles.centro}>
-        <Text style={styles.errorTitulo}>No pudimos cargar los lugares.</Text>
-
-        <Text style={styles.textoSecundario}>
-          Comprobá tu conexión e intentá nuevamente.
-        </Text>
-
-        <Pressable
-          style={styles.botonReintentar}
-          onPress={() => {
-            void consultaLugares.refetch();
-            void consultaCategorias.refetch();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Reintentar carga de lugares"
+      <View style={[styles.centro, { backgroundColor: colores.fondo }]}>
+        <View
+          style={[
+            styles.circuloEstado,
+            { backgroundColor: colores.errorSuave },
+          ]}
         >
-          <Text style={styles.botonReintentarTexto}>Reintentar</Text>
-        </Pressable>
+          <Ionicons
+            name="cloud-offline-outline"
+            size={32}
+            color={colores.error}
+          />
+        </View>
+
+        <Texto
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: colores.error,
+            textAlign: "center",
+          }}
+        >
+          No pudimos cargar los lugares
+        </Texto>
+
+        <Texto
+          style={{
+            fontSize: 15,
+            lineHeight: 22,
+            color: colores.textoSecundario,
+            textAlign: "center",
+          }}
+        >
+          Comprobá tu conexión e intentá nuevamente.
+        </Texto>
+
+        <View style={{ alignSelf: "stretch", marginTop: 8 }}>
+          <Boton
+            titulo="Reintentar"
+            onPress={() => {
+              void consultaLugares.refetch();
+              void consultaCategorias.refetch();
+            }}
+            accessibilityLabel="Reintentar carga de lugares"
+          />
+        </View>
       </View>
     );
   }
@@ -103,15 +121,19 @@ export default function LugaresScreen() {
       data={lugaresFiltrados}
       keyExtractor={(item) => item.id}
       keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: colores.fondo }}
       contentContainerStyle={styles.lista}
+      ItemSeparatorComponent={() => <View style={styles.separador} />}
       ListHeaderComponent={
-        <>
+        <View style={styles.encabezadoLista}>
           {/* Buscador */}
           <View
             style={[
               styles.buscador,
-              SOMBRA,
-              { backgroundColor: colores.superficie },
+              {
+                backgroundColor: colores.superficie,
+                borderColor: colores.borde,
+              },
             ]}
           >
             <Ionicons
@@ -169,7 +191,29 @@ export default function LugaresScreen() {
               />
             ))}
           </ScrollView>
-        </>
+
+          {/* Encabezado de sección */}
+          {lugaresFiltrados.length > 0 && (
+            <View style={styles.encabezado} accessibilityRole="header">
+              <View
+                style={[
+                  styles.iconoEncabezado,
+                  { backgroundColor: colores.primarioSuave },
+                ]}
+              >
+                <Ionicons
+                  name="location"
+                  size={16}
+                  color={colores.primarioFuerte}
+                />
+              </View>
+
+              <Texto style={{ fontSize: 17, fontWeight: "700" }}>
+                Lugares para descubrir
+              </Texto>
+            </View>
+          )}
+        </View>
       }
       renderItem={({ item }) => {
         const {
@@ -187,11 +231,22 @@ export default function LugaresScreen() {
             asChild
           >
             <Pressable
-              style={styles.tarjeta}
+              style={StyleSheet.flatten([
+                styles.tarjeta,
+                {
+                  backgroundColor: colores.superficie,
+                  borderColor: colores.borde,
+                },
+              ])}
               role="button"
               accessibilityLabel={`Ver detalle de ${item.nombre}`}
             >
-              <View style={styles.contenedorImagen}>
+              <View
+                style={[
+                  styles.contenedorImagen,
+                  { backgroundColor: colores.primarioSuave },
+                ]}
+              >
                 {item.imagenes.length > 0 ? (
                   <Image
                     source={{ uri: item.imagenes[0] }}
@@ -202,7 +257,16 @@ export default function LugaresScreen() {
                   />
                 ) : (
                   <View style={styles.imagenVacia}>
-                    <Text>Sin imagen disponible</Text>
+                    <Ionicons
+                      name="image-outline"
+                      size={42}
+                      color={colores.primarioFuerte}
+                    />
+                    <Texto
+                      style={{ fontSize: 14, color: colores.textoSecundario }}
+                    >
+                      Sin imagen disponible
+                    </Texto>
                   </View>
                 )}
 
@@ -214,31 +278,103 @@ export default function LugaresScreen() {
                   ]}
                 >
                   <Ionicons name={icono} size={14} color={color} />
-                  <Texto style={{ fontSize: 12, fontWeight: "600" }}>
+                  <Texto style={{ fontSize: 13, fontWeight: "700" }}>
                     {nombreCategoria}
                   </Texto>
                 </View>
               </View>
 
-              <Text style={styles.nombre}>{item.nombre}</Text>
-              <Text>{item.descripcionCorta}</Text>
-              <Text style={styles.direccion}>{item.direccion}</Text>
+              <View style={styles.contenidoTarjeta}>
+                <Texto
+                  numberOfLines={2}
+                  style={{ fontSize: 19, lineHeight: 26, fontWeight: "700" }}
+                >
+                  {item.nombre}
+                </Texto>
+
+                <Texto
+                  numberOfLines={3}
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 22,
+                    color: colores.textoSecundario,
+                  }}
+                >
+                  {item.descripcionCorta}
+                </Texto>
+
+                <View
+                  style={[
+                    styles.filaInferior,
+                    { borderTopColor: colores.borde },
+                  ]}
+                >
+                  <View style={styles.filaDireccion}>
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={colores.primarioFuerte}
+                    />
+                    <Texto
+                      numberOfLines={2}
+                      style={{
+                        flex: 1,
+                        fontSize: 14,
+                        lineHeight: 20,
+                        color: colores.textoSecundario,
+                      }}
+                    >
+                      {item.direccion}
+                    </Texto>
+                  </View>
+
+                  <Ionicons
+                    name="chevron-forward"
+                    size={22}
+                    color={colores.textoSecundario}
+                  />
+                </View>
+              </View>
             </Pressable>
           </Link>
         );
       }}
       ListEmptyComponent={
         <View style={styles.vacio}>
-          <Text style={styles.vacioTitulo}>
+          <View
+            style={[
+              styles.circuloEstado,
+              { backgroundColor: colores.primarioSuave },
+            ]}
+          >
+            <Ionicons
+              name={
+                lugares.length === 0 ? "location-outline" : "search-outline"
+              }
+              size={32}
+              color={colores.primarioFuerte}
+            />
+          </View>
+
+          <Texto
+            style={{ fontSize: 18, fontWeight: "700", textAlign: "center" }}
+          >
             {lugares.length === 0
               ? "No hay lugares disponibles"
               : "No encontramos resultados"}
-          </Text>
+          </Texto>
 
           {lugares.length > 0 && (
-            <Text style={styles.vacioTexto}>
+            <Texto
+              style={{
+                fontSize: 15,
+                lineHeight: 22,
+                color: colores.textoSecundario,
+                textAlign: "center",
+              }}
+            >
               Probá con otro nombre o seleccioná otra categoría.
-            </Text>
+            </Texto>
           )}
         </View>
       }
@@ -292,17 +428,26 @@ const styles = StyleSheet.create({
   lista: {
     flexGrow: 1,
     padding: 16,
-    gap: 14,
-    backgroundColor: "#F8FAFC",
+  },
+  encabezadoLista: {
+    marginBottom: 4,
+  },
+  separador: {
+    height: 12,
   },
   buscador: {
     height: 52,
     borderRadius: 26,
+    borderWidth: 1,
     paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 8,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     flex: 1,
@@ -311,8 +456,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   categorias: {
-    marginTop: 8,
-    marginBottom: 10,
+    marginTop: 12,
   },
   categoriasContenido: {
     gap: 8,
@@ -327,53 +471,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  tarjeta: {
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+  encabezado: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 18,
+    paddingBottom: 6,
   },
-  contenedorImagen: {
-    marginBottom: 14,
-  },
-  imagen: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-  },
-  imagenVacia: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-    backgroundColor: "#E8EEF3",
+  iconoEncabezado: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
   },
+  tarjeta: {
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  contenedorImagen: {
+    height: 170,
+  },
+  imagen: {
+    width: "100%",
+    height: "100%",
+  },
+  imagenVacia: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   etiquetaCategoria: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    top: 12,
+    left: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 7,
+    borderRadius: 999,
   },
-  nombre: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#17202A",
-    marginBottom: 6,
+  contenidoTarjeta: {
+    padding: 16,
+    gap: 10,
   },
-  direccion: {
-    marginTop: 10,
-    color: "#5F6B76",
-    fontSize: 14,
+  filaInferior: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingTop: 12,
+    marginTop: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  filaDireccion: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   centro: {
     flex: 1,
@@ -381,47 +544,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     gap: 12,
-    backgroundColor: "#F8FAFC",
   },
-  textoSecundario: {
-    fontSize: 15,
-    color: "#64748B",
-    textAlign: "center",
-  },
-  errorTitulo: {
-    fontSize: 19,
-    fontWeight: "700",
-    color: "#B42318",
-    textAlign: "center",
-  },
-  botonReintentar: {
-    backgroundColor: AZUL,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  botonReintentarTexto: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  circuloEstado: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   vacio: {
-    paddingVertical: 40,
-    paddingHorizontal: 20,
     alignItems: "center",
-    gap: 8,
-  },
-  vacioTitulo: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#17202A",
-    textAlign: "center",
-  },
-  vacioTexto: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#5F6B76",
-    textAlign: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 20,
+    gap: 12,
   },
 });

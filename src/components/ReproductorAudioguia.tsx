@@ -10,7 +10,6 @@ import {
   Alert,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 
@@ -18,11 +17,10 @@ import {
   descargarAudioguia,
   obtenerAudioguiaDescargada,
 } from "../servicios/audioguias";
-// ############################################
-import { colores } from "../tema/colores";
-import { espaciados } from "../tema/espaciados";
-import { tipografia } from "../tema/tipografia";
-// ############################################
+import { useTema } from "../tema/TemaContext";
+import Aviso from "./ui/Aviso";
+import Texto from "./ui/Texto";
+
 interface Props {
   lugarId: string;
   url: string | number;
@@ -30,10 +28,8 @@ interface Props {
   idioma: "es" | "en" | "pt";
 }
 
-const AZUL = "#075985";
-// #######################################
 const SALTO_SEGUNDOS = 15;
-// #######################################
+
 function formatearTiempo(segundos: number): string {
   const total = Math.max(0, Math.floor(segundos));
   const minutos = Math.floor(total / 60);
@@ -89,6 +85,7 @@ function ReproductorInterno({
   archivoDescargado,
   onDescargado,
 }: PropsInternas) {
+  const { colores } = useTema();
   const player = useAudioPlayer(fuenteAudio);
   const estado = useAudioPlayerStatus(player);
 
@@ -207,70 +204,153 @@ function ReproductorInterno({
     }
   }
 
+  const progreso =
+    duracion > 0 ? Math.min(1, Math.max(0, estado.currentTime / duracion)) : 0;
+
+  const botonPrincipalInactivo = cargando || procesando;
+
   return (
-    <View style={styles.contenedor}>
+    <View
+      style={[
+        styles.contenedor,
+        { backgroundColor: colores.superficie, borderColor: colores.borde },
+      ]}
+    >
       <View style={styles.encabezado}>
-        <View style={styles.iconoContenedor}>
-          <Ionicons name="headset-outline" size={26} color={AZUL} />
+        <View
+          style={[
+            styles.iconoContenedor,
+            { backgroundColor: colores.primarioSuave },
+          ]}
+        >
+          <Ionicons
+            name="headset-outline"
+            size={26}
+            color={colores.primarioFuerte}
+          />
         </View>
 
         <View style={styles.informacion}>
-          <Text style={styles.titulo}>Audioguía</Text>
-          <Text style={styles.descripcion}>
-            Idioma: {idioma.toUpperCase()} · {formatearTiempo(duracion)}
-          </Text>
+          <Texto style={{ fontSize: 18, fontWeight: "700" }}>Audioguía</Texto>
+
+          <View style={styles.filaMeta}>
+            <View
+              style={[
+                styles.pastilla,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="language-outline"
+                size={14}
+                color={colores.primarioFuerte}
+              />
+              <Texto
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: colores.primarioFuerte,
+                }}
+              >
+                {idioma.toUpperCase()}
+              </Texto>
+            </View>
+
+            <View
+              style={[
+                styles.pastilla,
+                { backgroundColor: colores.primarioSuave },
+              ]}
+            >
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={colores.primarioFuerte}
+              />
+              <Texto
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: colores.primarioFuerte,
+                }}
+              >
+                {formatearTiempo(duracion)}
+              </Texto>
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* <View style={styles.controles}>
-        <Pressable
-          style={[
-            styles.boton,
-            (cargando || procesando) && styles.botonDeshabilitado,
-          ]}
-          onPress={() => void alternarReproduccion()}
-          disabled={cargando || procesando}
-          accessibilityRole="button"
-          accessibilityLabel={
-            reproduciendo ? "Pausar audioguía" : "Reproducir audioguía"
-          }
+      {/* Progreso */}
+      <View style={styles.bloqueProgreso}>
+        <View
+          style={[styles.barra, { backgroundColor: colores.primarioSuave }]}
+          accessibilityRole="progressbar"
+          accessibilityLabel="Progreso de la audioguía"
         >
-          {cargando || procesando ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Ionicons
-              name={reproduciendo ? "pause" : "play"}
-              size={24}
-              color="#FFFFFF"
-            />
-          )}
+          <View
+            style={[
+              styles.barraRelleno,
+              {
+                width: `${progreso * 100}%`,
+                backgroundColor: colores.primarioFuerte,
+              },
+            ]}
+          />
+        </View>
 
-          <Text style={styles.textoBoton}>
-            {cargando ? "Cargando..." : reproduciendo ? "Pausar" : "Reproducir"}
-          </Text>
-        </Pressable>
+        <View style={styles.filaTiempos}>
+          <Texto
+            style={{
+              fontSize: 13,
+              fontWeight: "600",
+              color: colores.textoSecundario,
+            }}
+          >
+            {formatearTiempo(estado.currentTime)}
+          </Texto>
 
-        <Text style={styles.tiempo}>
-          {formatearTiempo(estado.currentTime)} / {formatearTiempo(duracion)}
-        </Text>
-      </View> */}
+          <Texto style={{ fontSize: 13, color: colores.textoSecundario }}>
+            Faltan {formatearTiempo(faltan)}
+          </Texto>
+        </View>
+      </View>
+
+      {/* Controles */}
       <View style={styles.controles}>
         <Pressable
-          style={[styles.botonSalto, cargando && styles.botonDeshabilitado]}
+          style={({ pressed }) => [
+            styles.botonSalto,
+            {
+              backgroundColor: colores.primarioSuave,
+              opacity: cargando ? 0.55 : pressed ? 0.85 : 1,
+            },
+          ]}
           onPress={() => void saltar(-SALTO_SEGUNDOS)}
           disabled={cargando}
           accessibilityRole="button"
           accessibilityLabel={`Retroceder ${SALTO_SEGUNDOS} segundos`}
           accessibilityState={{ disabled: cargando }}
         >
-          <Ionicons name="play-back" size={20} color={AZUL} />
-          <Text style={styles.textoSalto}>{SALTO_SEGUNDOS}</Text>
+          <Ionicons name="play-back" size={20} color={colores.primarioFuerte} />
+          <Texto
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: colores.primarioFuerte,
+            }}
+          >
+            {SALTO_SEGUNDOS}
+          </Texto>
         </Pressable>
 
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.boton,
-            (cargando || procesando) && styles.botonDeshabilitado,
+            {
+              backgroundColor: colores.primario,
+              opacity: botonPrincipalInactivo ? 0.55 : pressed ? 0.85 : 1,
+            },
           ]}
           onPress={() => void alternarReproduccion()}
           disabled={cargando || procesando}
@@ -280,48 +360,79 @@ function ReproductorInterno({
           }
         >
           {cargando || procesando ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colores.sobrePrimario} />
           ) : (
             <Ionicons
               name={reproduciendo ? "pause" : "play"}
               size={24}
-              color="#FFFFFF"
+              color={colores.sobrePrimario}
             />
           )}
 
-          <Text style={styles.textoBoton}>
+          <Texto
+            style={{
+              fontSize: 16,
+              fontWeight: "700",
+              color: colores.sobrePrimario,
+            }}
+          >
             {cargando ? "Cargando..." : reproduciendo ? "Pausar" : "Reproducir"}
-          </Text>
+          </Texto>
         </Pressable>
 
         <Pressable
-          style={[styles.botonSalto, cargando && styles.botonDeshabilitado]}
+          style={({ pressed }) => [
+            styles.botonSalto,
+            {
+              backgroundColor: colores.primarioSuave,
+              opacity: cargando ? 0.55 : pressed ? 0.85 : 1,
+            },
+          ]}
           onPress={() => void saltar(SALTO_SEGUNDOS)}
           disabled={cargando}
           accessibilityRole="button"
           accessibilityLabel={`Adelantar ${SALTO_SEGUNDOS} segundos`}
           accessibilityState={{ disabled: cargando }}
         >
-          <Ionicons name="play-forward" size={20} color={AZUL} />
-          <Text style={styles.textoSalto}>{SALTO_SEGUNDOS}</Text>
+          <Ionicons
+            name="play-forward"
+            size={20}
+            color={colores.primarioFuerte}
+          />
+          <Texto
+            style={{
+              fontSize: 12,
+              fontWeight: "700",
+              color: colores.primarioFuerte,
+            }}
+          >
+            {SALTO_SEGUNDOS}
+          </Texto>
         </Pressable>
       </View>
 
-      <Text style={styles.tiempo}>
-        {formatearTiempo(estado.currentTime)} / {formatearTiempo(duracion)} ·
-        Faltan {formatearTiempo(faltan)}
-      </Text>
-
       {disponibleOffline ? (
-        <View style={styles.estadoOffline}>
-          <Ionicons name="checkmark-circle-outline" size={20} color="#167A3E" />
-          <Text style={styles.textoOffline}>Disponible sin conexión</Text>
+        <View
+          style={[
+            styles.estadoOffline,
+            { backgroundColor: colores.exitoSuave },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={20} color={colores.exito} />
+          <Texto
+            style={{ fontSize: 14, fontWeight: "700", color: colores.exito }}
+          >
+            Disponible sin conexión
+          </Texto>
         </View>
       ) : (
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.botonDescarga,
-            descargando && styles.botonDeshabilitado,
+            {
+              backgroundColor: colores.primarioSuave,
+              opacity: descargando ? 0.55 : pressed ? 0.85 : 1,
+            },
           ]}
           onPress={() => void descargar()}
           disabled={descargando}
@@ -329,32 +440,46 @@ function ReproductorInterno({
           accessibilityLabel="Descargar audioguía para escuchar sin conexión"
         >
           {descargando ? (
-            <ActivityIndicator color={AZUL} />
+            <ActivityIndicator color={colores.primarioFuerte} />
           ) : (
-            <Ionicons name="download-outline" size={20} color={AZUL} />
+            <Ionicons
+              name="download-outline"
+              size={20}
+              color={colores.primarioFuerte}
+            />
           )}
 
-          <Text style={styles.textoDescarga}>
+          <Texto
+            style={{
+              flex: 1,
+              fontSize: 14,
+              fontWeight: "700",
+              color: colores.primarioFuerte,
+            }}
+          >
             {descargando
               ? "Descargando audioguía..."
               : "Descargar para escuchar sin conexión"}
-          </Text>
+          </Texto>
         </Pressable>
       )}
 
-      {estado.error && (
-        <Text style={styles.error}>No se pudo cargar la audioguía.</Text>
-      )}
+      {estado.error && <Aviso mensaje="No se pudo cargar la audioguía." />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   contenedor: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 18,
+    borderRadius: 20,
+    borderWidth: 1,
     padding: 18,
     gap: 18,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   encabezado: {
     flexDirection: "row",
@@ -365,100 +490,82 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: "#DBEAFE",
     alignItems: "center",
     justifyContent: "center",
   },
   informacion: {
     flex: 1,
-    gap: 5,
+    gap: 6,
   },
-  titulo: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#17202A",
+  filaMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  descripcion: {
-    fontSize: 14,
-    color: "#64748B",
-  },
-  controles: {
-    // ###################
-    justifyContent: "center",
-    // ###################
+  pastilla: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  bloqueProgreso: {
+    gap: 8,
+  },
+  barra: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  barraRelleno: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  filaTiempos: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  controles: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
   },
   boton: {
-    // ###################
     flex: 1,
-    // ###################
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    backgroundColor: AZUL,
     paddingHorizontal: 18,
-    paddingVertical: 13,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 26,
   },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
-  textoBoton: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  tiempo: {
-    // ###################
-    textAlign: "center",
-    // ###################
-    color: "#475569",
-    fontSize: 14,
-    fontWeight: "600",
+  botonSalto: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
   },
   estadoOffline: {
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "flex-start",
     gap: 8,
-  },
-  textoOffline: {
-    color: "#167A3E",
-    fontSize: 14,
-    fontWeight: "600",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
   },
   botonDescarga: {
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-  },
-  textoDescarga: {
-    color: AZUL,
-    fontSize: 14,
-    fontWeight: "700",
-    flex: 1,
-  },
-  error: {
-    color: "#B42318",
-    fontSize: 14,
-  },
-  // ########################
-  botonSalto: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colores.borde,
-    backgroundColor: colores.superficie,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: espaciados.xs,
-  },
-  textoSalto: {
-    ...tipografia.secundario,
-    color: colores.textoSecundario,
+    borderRadius: 24,
   },
 });

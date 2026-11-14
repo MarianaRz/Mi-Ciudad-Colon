@@ -34,22 +34,4 @@ export const coloresClaro: PaletaColores = {
   advertenciaSuave: "#FEF0C7",
 };
 
-export const coloresOscuro: PaletaColores = {
-  primario: "#7D97EE",
-  primarioFuerte: "#9DB1F4",
-  primarioSuave: "#1E2745",
-  sobrePrimario: "#0E1220",
-  fondo: "#0E1220",
-  superficie: "#171C2E",
-  texto: "#EEF1FB",
-  textoSecundario: "#A3ACC8",
-  borde: "#2A3149",
-  error: "#F97066",
-  errorSuave: "#3B1C1A",
-  exito: "#4ADE80",
-  exitoSuave: "#12301F",
-  advertencia: "#FBBF24",
-  advertenciaSuave: "#3A2D0E",
-};
-
 export const colores = coloresClaro;

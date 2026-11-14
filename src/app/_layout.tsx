@@ -5,6 +5,8 @@ import { useEffect } from "react";
 
 import { queryClient } from "../config/queryClient";
 import { SesionProvider } from "../contextos/SesionContext";
+import { colores } from "../tema/colores";
+import { fuentes } from "../tema/tipografia";
 
 import {
   PlusJakartaSans_400Regular,
@@ -89,10 +91,10 @@ export default function RootLayout() {
             name="lugares"
             options={{
               title: "Lugares",
-              headerStyle: { backgroundColor: "#FFFFFF" },
-              headerTintColor: "#141B2D",
+              headerStyle: { backgroundColor: colores.superficie },
+              headerTintColor: colores.texto,
               headerTitleStyle: {
-                fontFamily: "PlusJakartaSans_700Bold",
+                fontFamily: fuentes.negrita,
                 fontSize: 18,
               },
               headerShadowVisible: false,
@@ -103,12 +105,11 @@ export default function RootLayout() {
             name="lugares/[id]"
             options={{
               title: "Detalle del lugar",
-              headerStyle: {
-                backgroundColor: "#075985",
-              },
-              headerTintColor: "#FFFFFF",
+              headerStyle: { backgroundColor: colores.superficie },
+              headerTintColor: colores.texto,
               headerTitleStyle: {
-                fontWeight: "700",
+                fontFamily: fuentes.negrita,
+                fontSize: 18,
               },
               headerShadowVisible: false,
             }}
@@ -117,12 +118,11 @@ export default function RootLayout() {
           <Stack.Screen
             name="eventos/[id]"
             options={{
-              headerStyle: {
-                backgroundColor: "#075985",
-              },
-              headerTintColor: "#FFFFFF",
+              headerStyle: { backgroundColor: colores.superficie },
+              headerTintColor: colores.texto,
               headerTitleStyle: {
-                fontWeight: "700",
+                fontFamily: fuentes.negrita,
+                fontSize: 18,
               },
               headerShadowVisible: false,
             }}
